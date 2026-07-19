@@ -21,6 +21,19 @@ enum class ThemeMode(val displayName: String) {
     DARK("Dark")
 }
 
+/** The narrative atmosphere selected before Pluck writes a story. */
+enum class StoryMood(
+    val displayName: String,
+    val promptDirection: String
+) {
+    CINEMATIC("Cinematic", "cinematic, vivid, and emotionally resonant"),
+    MYSTERIOUS("Mysterious", "intriguing, suspenseful, and quietly uncanny"),
+    WHIMSICAL("Whimsical", "playful, imaginative, and gently surprising"),
+    WARM("Warm", "tender, hopeful, and human"),
+    ADVENTUROUS("Adventurous", "propulsive, daring, and full of discovery"),
+    DARK("Dark", "atmospheric, tense, and shadowed without graphic content")
+}
+
 data class Journey(val id: Long, val date: String, val timeZoneId: String)
 
 data class JourneyPhoto(
@@ -66,6 +79,7 @@ data class JourneyLibraryItem(
 data class StoryGenerationInput(
     val photos: List<JourneyPhoto>,
     val locale: String,
+    val mood: StoryMood = StoryMood.CINEMATIC,
     val genre: String? = null
 )
 

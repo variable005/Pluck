@@ -523,6 +523,7 @@ private suspend fun streamResponse(conversation: Conversation, contents: Content
 
 private fun localStoryPrompt(input: StoryGenerationInput): String = buildString {
     append("The attached images are one ordered journey. Write approximately 700 to 1200 words of original fiction inspired by every place. Never write a diary, travelogue, summary, or image-by-image description. Make every place matter naturally to one continuous plot. Keep characters, chronology, cause and effect, and setting details consistent. Return exactly: TITLE: <title> then STORY: <narrative>.")
+    append(" Narrative mood: ${input.mood.promptDirection}. Use it to guide the voice, pacing, and imagery.")
     input.genre?.let { append(" Genre: $it.") }
     input.photos.forEachIndexed { index, photo -> append("\nScene ${index + 1}: captured at ${photo.timestamp}; place hint: ${photo.address ?: "not supplied"}; coordinates: ${photo.latitude ?: "unknown"}, ${photo.longitude ?: "unknown"}.") }
 }

@@ -63,7 +63,11 @@ fun HomeScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = if (hasJourney) "Keep the story\nmoving." else "A story starts\nwith one place.",
+                    text = when {
+                        !state.preferredName.isNullOrBlank() -> "Good to see you,\n${state.preferredName}."
+                        hasJourney -> "Keep the story\nmoving."
+                        else -> "A story starts\nwith one place."
+                    },
                     style = MaterialTheme.typography.displaySmall
                 )
                 Text(

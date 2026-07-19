@@ -34,6 +34,7 @@ import com.example.pluck.ui.screen.HomeScreen
 import com.example.pluck.ui.screen.LibraryScreen
 import com.example.pluck.ui.screen.SettingsScreen
 import com.example.pluck.ui.screen.LocalAiScreen
+import com.example.pluck.ui.screen.OnboardingScreen
 import com.example.pluck.ui.screen.StoryScreen
 import com.example.pluck.ui.screen.TimelineScreen
 import com.example.pluck.viewmodel.HomeViewModel
@@ -56,7 +57,7 @@ fun PluckNavHost() {
         route == "settings" -> MainDestination.SETTINGS
         else -> MainDestination.HOME
     }
-    val barVisible = route !in setOf("capture/{$JOURNEY_ID}", "story/{$JOURNEY_ID}")
+    val barVisible = route !in setOf("onboarding", "capture/{$JOURNEY_ID}", "story/{$JOURNEY_ID}")
     val floatingBarState = remember { FloatingBarState() }
     LaunchedEffect(route) { floatingBarState.visible = barVisible }
     CompositionLocalProvider(
@@ -66,7 +67,7 @@ fun PluckNavHost() {
     LiquidGlassBackdrop(Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
-            startDestination = "home",
+            startDestination = "onboarding",
             modifier = Modifier.fillMaxSize(),
             // A restrained shared-axis motion gives destinations spatial continuity while
             // still respecting the system animator-duration scale.
@@ -87,6 +88,16 @@ fun PluckNavHost() {
                     slideOutHorizontally(animationSpec = tween(220)) { it / 18 }
             }
         ) {
+            composable("onboarding") {
+                OnboardingScreen(
+                    onFinished = {
+                        navController.navigate("home") {
+                            popUpTo("onboarding") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
             composable("home") { HomeScreen(onJourney = { navController.navigate("timeline/$it") }, onSettings = { navController.navigate("settings") }) }
             composable("journey") { JourneyGateway(onJourney = { navController.navigate("timeline/$it") }) }
             composable("library") {

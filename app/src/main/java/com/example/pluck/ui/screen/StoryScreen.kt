@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -42,6 +44,7 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,6 +76,7 @@ import com.example.pluck.ui.components.AnimatedPrimaryButton
 import com.example.pluck.ui.components.PluckHapticEvent
 import com.example.pluck.ui.components.PluckTopAppBar
 import com.example.pluck.ui.components.rememberPluckHaptics
+import com.example.pluck.domain.model.StoryMood
 import com.example.pluck.viewmodel.StoryViewModel
 import kotlin.math.ceil
 
@@ -221,8 +225,9 @@ private fun StoryLoadingLine() {
 }
 
 @Composable
-private fun StoryEmpty(onBack: () -> Unit, onGenerate: () -> Unit, error: String?) {
+private fun StoryEmpty(onBack: () -> Unit, onGenerate: (StoryMood) -> Unit, error: String?) {
     var visible by rememberSaveable(error) { mutableStateOf(false) }
+    var mood by rememberSaveable { mutableStateOf(StoryMood.CINEMATIC) }
     LaunchedEffect(error) { visible = true }
     Scaffold(topBar = { PluckTopAppBar("Your story", onBack = onBack) }) { innerPadding ->
         BoxWithConstraints(
@@ -268,10 +273,29 @@ private fun StoryEmpty(onBack: () -> Unit, onGenerate: () -> Unit, error: String
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
-                    Spacer(Modifier.height(28.dp))
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        text = "Choose the mood",
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "This shapes the voice and atmosphere of your story.",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    MoodPicker(
+                        selected = mood,
+                        onSelect = { mood = it },
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                    Spacer(Modifier.height(24.dp))
                     AnimatedPrimaryButton(
-                        text = if (error == null) "Generate story" else "Try again",
-                        onClick = onGenerate,
+                        text = if (error == null) "Generate ${mood.displayName.lowercase()} story" else "Try again",
+                        onClick = { onGenerate(mood) },
                         modifier = Modifier.fillMaxWidth(),
                         icon = { Icon(Icons.Rounded.AutoStories, contentDescription = null) }
                     )
@@ -283,6 +307,26 @@ private fun StoryEmpty(onBack: () -> Unit, onGenerate: () -> Unit, error: String
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MoodPicker(
+    selected: StoryMood,
+    onSelect: (StoryMood) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(StoryMood.entries, key = { it.name }) { mood ->
+            FilterChip(
+                selected = mood == selected,
+                onClick = { onSelect(mood) },
+                label = { Text(mood.displayName) }
+            )
         }
     }
 }

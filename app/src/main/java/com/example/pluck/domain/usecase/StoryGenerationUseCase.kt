@@ -2,6 +2,7 @@ package com.example.pluck.domain.usecase
 
 import com.example.pluck.domain.model.GeneratedStory
 import com.example.pluck.domain.model.StoryGenerationInput
+import com.example.pluck.domain.model.StoryMood
 import com.example.pluck.domain.provider.StoryProvider
 import com.example.pluck.domain.repository.JourneyRepository
 import com.example.pluck.domain.repository.SettingsRepository
@@ -20,13 +21,20 @@ class GenerateStoryUseCase @Inject constructor(
     private val providerRegistry: StoryProviderRegistry,
     private val storyRepository: StoryRepository
 ) {
-    suspend operator fun invoke(journeyId: Long, locale: String): GeneratedStory {
+    suspend operator fun invoke(
+        journeyId: Long,
+        locale: String,
+        mood: StoryMood = StoryMood.CINEMATIC
+    ): GeneratedStory {
         val providerType = settingsRepository.observeProvider().first()
         val provider = providerRegistry.selected(providerType)
         val key = if (providerType.requiresApiKey) requireNotNull(settingsRepository.apiKey(providerType)) { "Add an API key for ${providerType.displayName} in Settings." } else ""
         val photos = journeyRepository.observePhotos(journeyId).first()
         require(photos.size >= 2) { "Capture at least two places before generating a story." }
-        val story = provider.generateStory(StoryGenerationInput(photos = photos, locale = locale), key)
+        val story = provider.generateStory(
+            StoryGenerationInput(photos = photos, locale = locale, mood = mood),
+            key
+        )
         storyRepository.save(com.example.pluck.domain.model.Story(0, journeyId, story.title, story.content, providerType, System.currentTimeMillis()))
         return story
     }

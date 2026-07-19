@@ -3,6 +3,7 @@ package com.example.pluck.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pluck.data.repository.OnboardingStore
 import com.example.pluck.data.files.JourneyPhotoStore
 import com.example.pluck.data.location.LocationCapture
 import com.example.pluck.domain.model.AiProvider
@@ -13,6 +14,7 @@ import com.example.pluck.domain.model.ThemeMode
 import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
+import com.example.pluck.domain.model.StoryMood
 import com.example.pluck.domain.model.LocalAiModelState
 import com.example.pluck.domain.repository.JourneyRepository
 import com.example.pluck.domain.repository.SettingsRepository
@@ -37,11 +39,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class HomeUiState(val journey: Journey? = null)
+data class HomeUiState(
+    val journey: Journey? = null,
+    val preferredName: String? = null
+)
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(private val journeys: JourneyRepository) : ViewModel() {
-    val uiState: StateFlow<HomeUiState> = journeys.observeToday().combine(MutableStateFlow(Unit)) { journey, _ -> HomeUiState(journey) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+class HomeViewModel @Inject constructor(
+    private val journeys: JourneyRepository,
+    onboardingStore: OnboardingStore
+) : ViewModel() {
+    val uiState: StateFlow<HomeUiState> = combine(
+        journeys.observeToday(),
+        onboardingStore.observePreferredName()
+    ) { journey, preferredName ->
+        HomeUiState(journey = journey, preferredName = preferredName)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
     fun start(onReady: (Long) -> Unit) = viewModelScope.launch { onReady(journeys.getOrCreateToday().id) }
 }
 
@@ -119,11 +132,13 @@ class StoryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val journeyId: Long = checkNotNull(savedStateHandle["journeyId"])
+    private var selectedMood: StoryMood = StoryMood.CINEMATIC
     private val _generation = MutableStateFlow(StoryUiState())
     val uiState: StateFlow<StoryUiState> = combine(stories.observeLatest(journeyId), _generation) { story, generation -> generation.copy(story = story) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StoryUiState())
-    fun generate() = viewModelScope.launch {
+    fun generate(mood: StoryMood = selectedMood) = viewModelScope.launch {
+        selectedMood = mood
         _generation.value = _generation.value.copy(generating = true, error = null)
-        runCatching { generateStory(journeyId, Locale.getDefault().displayLanguage) }
+        runCatching { generateStory(journeyId, Locale.getDefault().displayLanguage, mood) }
             .onSuccess { _generation.value = StoryUiState() }
             .onFailure { _generation.value = _generation.value.copy(generating = false, error = it.message ?: "Story generation failed.") }
     }
