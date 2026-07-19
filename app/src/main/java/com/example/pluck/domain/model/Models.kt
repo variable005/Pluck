@@ -28,6 +28,27 @@ data class Story(
     val createdAt: Long
 )
 
+/**
+ * The lightweight story information shown in the journey library.
+ *
+ * Story content is intentionally excluded so opening the library does not load every saved
+ * story into memory. The full [Story] is observed only when the reader is opened.
+ */
+data class StoryPreview(
+    val id: Long,
+    val title: String,
+    val provider: AiProvider,
+    val createdAt: Long
+)
+
+/** A journey with the summary data needed to render it in the user's library. */
+data class JourneyLibraryItem(
+    val journey: Journey,
+    val photoCount: Int,
+    val coverImagePath: String?,
+    val story: StoryPreview?
+)
+
 data class StoryGenerationInput(
     val photos: List<JourneyPhoto>,
     val locale: String,

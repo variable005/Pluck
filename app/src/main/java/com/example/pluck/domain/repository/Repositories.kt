@@ -2,6 +2,7 @@ package com.example.pluck.domain.repository
 
 import com.example.pluck.domain.model.AiProvider
 import com.example.pluck.domain.model.Journey
+import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
 import com.example.pluck.domain.model.LocalAiModelState
@@ -9,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface JourneyRepository {
     fun observeToday(): Flow<Journey?>
+    fun observeJourney(journeyId: Long): Flow<Journey?>
+    fun observeLibrary(): Flow<List<JourneyLibraryItem>>
     fun observePhotos(journeyId: Long): Flow<List<JourneyPhoto>>
     suspend fun getOrCreateToday(): Journey
     suspend fun addPhoto(journeyId: Long, imagePath: String, timestamp: Long, latitude: Double?, longitude: Double?, address: String?)

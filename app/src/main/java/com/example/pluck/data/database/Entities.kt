@@ -42,3 +42,19 @@ data class StoryEntity(
     val provider: AiProvider,
     val createdAt: Long
 )
+
+/**
+ * A Room projection used by the Library. It intentionally contains only story metadata;
+ * reading prose remains the responsibility of [StoryDao.observeLatest].
+ */
+data class JourneyLibraryRow(
+    val journeyId: Long,
+    val journeyDate: String,
+    val journeyTimeZoneId: String,
+    val photoCount: Int,
+    val coverImagePath: String?,
+    val storyId: Long?,
+    val storyTitle: String?,
+    val storyProvider: AiProvider?,
+    val storyCreatedAt: Long?
+)

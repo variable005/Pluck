@@ -5,14 +5,17 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.example.pluck.data.database.JourneyDao
 import com.example.pluck.data.database.JourneyEntity
+import com.example.pluck.data.database.JourneyLibraryRow
 import com.example.pluck.data.database.JourneyPhotoDao
 import com.example.pluck.data.database.JourneyPhotoEntity
 import com.example.pluck.data.database.StoryDao
 import com.example.pluck.data.database.StoryEntity
 import com.example.pluck.domain.model.AiProvider
 import com.example.pluck.domain.model.Journey
+import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
+import com.example.pluck.domain.model.StoryPreview
 import com.example.pluck.domain.repository.JourneyRepository
 import com.example.pluck.domain.repository.SettingsRepository
 import com.example.pluck.domain.repository.StoryRepository
@@ -30,6 +33,16 @@ import kotlinx.coroutines.flow.map
 private fun JourneyEntity.toDomain() = Journey(id, date, timeZoneId)
 private fun JourneyPhotoEntity.toDomain() = JourneyPhoto(id, journeyId, imagePath, timestamp, latitude, longitude, address)
 private fun StoryEntity.toDomain() = Story(id, journeyId, title, content, provider, createdAt)
+private fun JourneyLibraryRow.toDomain() = JourneyLibraryItem(
+    journey = Journey(journeyId, journeyDate, journeyTimeZoneId),
+    photoCount = photoCount,
+    coverImagePath = coverImagePath,
+    story = if (storyId != null && storyTitle != null && storyProvider != null && storyCreatedAt != null) {
+        StoryPreview(storyId, storyTitle, storyProvider, storyCreatedAt)
+    } else {
+        null
+    }
+)
 
 @Singleton
 class RoomJourneyRepository @Inject constructor(
@@ -39,6 +52,8 @@ class RoomJourneyRepository @Inject constructor(
     private fun today() = LocalDate.now().toString()
 
     override fun observeToday(): Flow<Journey?> = journeyDao.observeByDate(today()).map { it?.toDomain() }
+    override fun observeJourney(journeyId: Long): Flow<Journey?> = journeyDao.observeById(journeyId).map { it?.toDomain() }
+    override fun observeLibrary(): Flow<List<JourneyLibraryItem>> = journeyDao.observeLibrary().map { rows -> rows.map { it.toDomain() } }
     override fun observePhotos(journeyId: Long): Flow<List<JourneyPhoto>> = photoDao.observeForJourney(journeyId).map { list -> list.map { it.toDomain() } }
 
     override suspend fun getOrCreateToday(): Journey {

@@ -51,37 +51,68 @@ import com.example.pluck.ui.components.LocalFloatingBarState
 import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.TimelineViewModel
 import java.io.File
+import java.time.LocalDate
 import java.util.Date
 
 @Composable
-fun TimelineScreen(onCapture: (Long) -> Unit, onStory: (Long) -> Unit, onBack: () -> Unit, viewModel: TimelineViewModel = hiltViewModel()) {
+fun TimelineScreen(
+    onCapture: (Long) -> Unit,
+    onStory: (Long) -> Unit,
+    onBack: () -> Unit,
+    readOnly: Boolean = false,
+    viewModel: TimelineViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val floatingBar = LocalFloatingBarState.current
+    val journey = state.journey
+    // The normal route only represents today's active journey. While Room is loading it,
+    // keep that route actionable instead of briefly presenting an archive empty state.
+    val canAddPlaces = !readOnly && (journey == null || journey.date == LocalDate.now().toString())
     LaunchedEffect(listState.isScrollInProgress) { floatingBar.visible = !listState.isScrollInProgress }
     Scaffold(
-        topBar = { PluckTopAppBar("Today’s journey", "A place at a time", onBack) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                text = { Text("Add place") },
-                icon = { Icon(Icons.Rounded.AddAPhoto, contentDescription = null) },
-                onClick = { onCapture(viewModel.journeyId) },
-                expanded = !listState.isScrollInProgress,
-                shape = MaterialTheme.shapes.medium,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        topBar = {
+            PluckTopAppBar(
+                title = if (readOnly) "Saved journey" else "Today’s journey",
+                subtitle = if (readOnly) "A day worth revisiting" else "A place at a time",
+                onBack = onBack
             )
         },
+        floatingActionButton = {
+            if (canAddPlaces) {
+                ExtendedFloatingActionButton(
+                    text = { Text("Add place") },
+                    icon = { Icon(Icons.Rounded.AddAPhoto, contentDescription = null) },
+                    onClick = { onCapture(viewModel.journeyId) },
+                    expanded = !listState.isScrollInProgress,
+                    shape = MaterialTheme.shapes.medium,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        },
         bottomBar = {
-            AnimatedVisibility(state.photos.size >= 2, enter = fadeIn() + slideInVertically { it / 2 }) {
+            AnimatedVisibility(state.story != null || state.photos.size >= 2, enter = fadeIn() + slideInVertically { it / 2 }) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                    AnimatedPrimaryButton("Generate your story", { onStory(viewModel.journeyId) }, Modifier.fillMaxWidth(), icon = { Icon(Icons.Rounded.AutoStories, contentDescription = null) })
+                    AnimatedPrimaryButton(
+                        text = if (state.story == null) "Generate your story" else "Read your story",
+                        onClick = { onStory(viewModel.journeyId) },
+                        modifier = Modifier.fillMaxWidth(),
+                        icon = { Icon(Icons.Rounded.AutoStories, contentDescription = null) }
+                    )
                 }
             }
         }
     ) { padding ->
         if (state.photos.isEmpty()) {
-            EmptyState(Icons.Rounded.Place, "Where will the story begin?", "Capture one photo at each place you visit. Pluck will hold the sequence for later.", "Capture first place", { onCapture(viewModel.journeyId) }, Modifier.fillMaxSize().padding(padding).padding(24.dp))
+            EmptyState(
+                icon = Icons.Rounded.Place,
+                title = if (canAddPlaces) "Where will the story begin?" else "No places were saved",
+                body = if (canAddPlaces) "Capture one photo at each place you visit. Pluck will hold the sequence for later." else "This journey did not keep any captured places.",
+                action = if (canAddPlaces) "Capture first place" else "Back to library",
+                onAction = if (canAddPlaces) ({ onCapture(viewModel.journeyId) }) else onBack,
+                modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp)
+            )
         } else {
             LazyColumn(
                 state = listState,
@@ -91,19 +122,19 @@ fun TimelineScreen(onCapture: (Long) -> Unit, onStory: (Long) -> Unit, onBack: (
             ) {
                 stickyHeader {
                     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Today", style = MaterialTheme.typography.headlineLarge)
+                        Text(if (readOnly) "Captured places" else "Today", style = MaterialTheme.typography.headlineLarge)
                         StatusPill("${state.photos.size} ${if (state.photos.size == 1) "place" else "places"}")
                     }
                 }
-                items(state.photos, key = { it.id }) { photo -> TimelineItem(photo, onDelete = { viewModel.delete(photo) }) }
-                item { if (state.photos.size == 1) Text("One more place unlocks story generation.", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
+                items(state.photos, key = { it.id }) { photo -> TimelineItem(photo, canDelete = canAddPlaces, onDelete = { viewModel.delete(photo) }) }
+                item { if (state.photos.size == 1 && state.story == null) Text("One more place unlocks story generation.", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
             }
         }
     }
 }
 
 @Composable
-private fun TimelineItem(photo: JourneyPhoto, onDelete: () -> Unit) {
+private fun TimelineItem(photo: JourneyPhoto, canDelete: Boolean, onDelete: () -> Unit) {
     AnimatedVisibility(visible = true, enter = fadeIn() + slideInVertically { it / 5 }) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(end = 12.dp)) {
@@ -124,7 +155,9 @@ private fun TimelineItem(photo: JourneyPhoto, onDelete: () -> Unit) {
                             Spacer(Modifier.height(4.dp))
                             Text(photo.address ?: "A place without a label", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                         }
-                        IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete this place") }
+                        if (canDelete) {
+                            IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete this place") }
+                        }
                     }
                 }
             }

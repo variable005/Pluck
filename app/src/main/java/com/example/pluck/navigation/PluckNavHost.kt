@@ -28,6 +28,7 @@ import com.example.pluck.ui.components.FloatingBarState
 import com.example.pluck.ui.components.LocalFloatingBarState
 import com.example.pluck.ui.screen.CaptureScreen
 import com.example.pluck.ui.screen.HomeScreen
+import com.example.pluck.ui.screen.LibraryScreen
 import com.example.pluck.ui.screen.SettingsScreen
 import com.example.pluck.ui.screen.LocalAiScreen
 import com.example.pluck.ui.screen.StoryScreen
@@ -44,6 +45,7 @@ fun PluckNavHost() {
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route.orEmpty()
     val selected = when {
+        route.startsWith("library") -> MainDestination.LIBRARY
         route.startsWith("timeline") || route == "journey" -> MainDestination.JOURNEY
         route == "settings" -> MainDestination.SETTINGS
         else -> MainDestination.HOME
@@ -76,8 +78,28 @@ fun PluckNavHost() {
         ) {
             composable("home") { HomeScreen(onJourney = { navController.navigate("timeline/$it") }, onSettings = { navController.navigate("settings") }) }
             composable("journey") { JourneyGateway(onJourney = { navController.navigate("timeline/$it") }) }
+            composable("library") {
+                LibraryScreen(
+                    onOpenJourney = { journeyId -> navController.navigate("library/timeline/$journeyId") },
+                    onOpenStory = { journeyId -> navController.navigate("story/$journeyId") },
+                    onStartJourney = {
+                        navController.navigate("journey") {
+                            launchSingleTop = true
+                            popUpTo("home") { saveState = true }
+                        }
+                    }
+                )
+            }
             composable("timeline/{$JOURNEY_ID}", arguments = listOf(navArgument(JOURNEY_ID) { type = NavType.LongType })) {
                 TimelineScreen(onCapture = { navController.navigate("capture/$it") }, onStory = { navController.navigate("story/$it") }, onBack = { navController.navigate("home") { launchSingleTop = true } })
+            }
+            composable("library/timeline/{$JOURNEY_ID}", arguments = listOf(navArgument(JOURNEY_ID) { type = NavType.LongType })) {
+                TimelineScreen(
+                    onCapture = { },
+                    onStory = { navController.navigate("story/$it") },
+                    onBack = { navController.popBackStack() },
+                    readOnly = true
+                )
             }
             composable("capture/{$JOURNEY_ID}", arguments = listOf(navArgument(JOURNEY_ID) { type = NavType.LongType })) {
                 CaptureScreen(onDone = { navController.popBackStack() }, onBack = { navController.popBackStack() })

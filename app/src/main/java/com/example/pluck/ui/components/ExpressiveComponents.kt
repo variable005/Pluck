@@ -29,9 +29,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
@@ -67,6 +69,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 enum class MainDestination(val label: String, val route: String, val icon: ImageVector) {
     HOME("Home", "home", Icons.Rounded.Home),
     JOURNEY("Journey", "journey", Icons.Rounded.AutoStories),
+    LIBRARY("Library", "library", Icons.Rounded.History),
     SETTINGS("Settings", "settings", Icons.Rounded.Settings)
 }
 
@@ -146,8 +149,16 @@ fun AnimatedPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PluckTopAppBar(title: String, subtitle: String? = null, onBack: (() -> Unit)? = null, actions: @Composable (() -> Unit)? = null) {
+fun PluckTopAppBar(
+    title: String,
+    subtitle: String? = null,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets
+) {
     TopAppBar(
+        modifier = modifier,
         title = {
             Column {
                 Text(title, style = MaterialTheme.typography.titleLarge)
@@ -158,6 +169,7 @@ fun PluckTopAppBar(title: String, subtitle: String? = null, onBack: (() -> Unit)
             if (onBack != null) androidx.compose.material3.IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Navigate back" }) { Text("‹", style = MaterialTheme.typography.headlineLarge) }
         },
         actions = { actions?.invoke() },
+        windowInsets = windowInsets,
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
     )
 }

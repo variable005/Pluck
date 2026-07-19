@@ -8,6 +8,7 @@ import com.example.pluck.data.location.LocationCapture
 import com.example.pluck.domain.model.AiProvider
 import com.example.pluck.domain.model.ConnectionResult
 import com.example.pluck.domain.model.Journey
+import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
 import com.example.pluck.domain.model.LocalAiModelState
@@ -21,13 +22,18 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import java.util.Locale
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class HomeUiState(val journey: Journey? = null)
 
@@ -37,7 +43,24 @@ class HomeViewModel @Inject constructor(private val journeys: JourneyRepository)
     fun start(onReady: (Long) -> Unit) = viewModelScope.launch { onReady(journeys.getOrCreateToday().id) }
 }
 
-data class TimelineUiState(val photos: List<JourneyPhoto> = emptyList(), val story: Story? = null)
+data class LibraryUiState(
+    val journeys: List<JourneyLibraryItem> = emptyList(),
+    val isLoading: Boolean = true
+)
+
+/** Exposes the user's locally stored journeys and their latest saved story previews. */
+@HiltViewModel
+class LibraryViewModel @Inject constructor(journeys: JourneyRepository) : ViewModel() {
+    val uiState: StateFlow<LibraryUiState> = journeys.observeLibrary()
+        .map { LibraryUiState(journeys = it, isLoading = false) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState())
+}
+
+data class TimelineUiState(
+    val journey: Journey? = null,
+    val photos: List<JourneyPhoto> = emptyList(),
+    val story: Story? = null
+)
 
 @HiltViewModel
 class TimelineViewModel @Inject constructor(
@@ -46,7 +69,13 @@ class TimelineViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     val journeyId: Long = checkNotNull(savedStateHandle["journeyId"])
-    val uiState: StateFlow<TimelineUiState> = combine(journeys.observePhotos(journeyId), stories.observeLatest(journeyId)) { photos, story -> TimelineUiState(photos, story) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TimelineUiState())
+    val uiState: StateFlow<TimelineUiState> = combine(
+        journeys.observeJourney(journeyId),
+        journeys.observePhotos(journeyId),
+        stories.observeLatest(journeyId)
+    ) { journey, photos, story ->
+        TimelineUiState(journey = journey, photos = photos, story = story)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TimelineUiState())
     fun delete(photo: JourneyPhoto) = viewModelScope.launch { journeys.deletePhoto(photo) }
 }
 
@@ -108,7 +137,38 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState = _uiState.asStateFlow()
-    init { viewModelScope.launch { settings.observeProvider().collect { provider -> _uiState.value = _uiState.value.copy(provider = provider) } } }
+
+    init {
+        loadSavedApiKeys()
+        viewModelScope.launch {
+            settings.observeProvider().collect { provider ->
+                _uiState.update { it.copy(provider = provider) }
+            }
+        }
+    }
+
+    private fun loadSavedApiKeys() = viewModelScope.launch {
+        val savedKeys = withContext(Dispatchers.IO) {
+            buildMap {
+                AiProvider.entries.filter { it.requiresApiKey }.forEach { provider ->
+                    val key = try {
+                        settings.apiKey(provider)
+                    } catch (exception: CancellationException) {
+                        throw exception
+                    } catch (_: Exception) {
+                        // A key that cannot be decrypted is treated as unavailable; never crash Settings.
+                        null
+                    }
+                    key?.let { put(provider, it) }
+                }
+            }
+        }
+        _uiState.update { current ->
+            // Preserve edits made while encrypted preferences were being read.
+            current.copy(keys = savedKeys + current.keys)
+        }
+    }
+
     fun select(provider: AiProvider) = viewModelScope.launch { settings.setProvider(provider) }
     fun updateKey(provider: AiProvider, value: String) { _uiState.value = _uiState.value.copy(keys = _uiState.value.keys + (provider to value)) }
     fun saveKey(provider: AiProvider) = viewModelScope.launch { settings.saveApiKey(provider, _uiState.value.keys[provider].orEmpty()) }

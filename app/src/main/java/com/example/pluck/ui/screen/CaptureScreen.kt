@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.LocationOn
@@ -108,8 +110,21 @@ private fun CaptureExperience(saving: Boolean, hasLocation: Boolean, createFile:
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         androidx.compose.ui.viewinterop.AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = flashAlpha)))
-        PluckTopAppBar("Capture a place", "One photo. One moment.", onBack = onBack)
-        if (hasLocation) Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f), modifier = Modifier.align(Alignment.TopEnd).padding(top = 84.dp, end = 20.dp)) { androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.LocationOn, null, Modifier.size(16.dp)); Text("Place hint on", Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelLarge) } }
+        PluckTopAppBar(
+            title = "Capture a place",
+            subtitle = "One photo. One moment.",
+            onBack = onBack,
+            modifier = Modifier.statusBarsPadding(),
+            windowInsets = WindowInsets(0, 0, 0, 0)
+        )
+        if (hasLocation) Surface(
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 64.dp, end = 20.dp)
+        ) { androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.LocationOn, null, Modifier.size(16.dp)); Text("Place hint on", Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelLarge) } }
         if (saving) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.46f)) { LoadingView("Saving this place…", Modifier.fillMaxSize()) }
         } else {

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Settings
@@ -40,7 +41,13 @@ import com.example.pluck.viewmodel.HomeViewModel
 @Composable
 fun HomeScreen(onJourney: (Long) -> Unit, onSettings: () -> Unit, viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Column(Modifier.fillMaxSize().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
         HomeHeader(onSettings)
         AnimatedVisibility(true, enter = fadeIn(spring()) + slideInVertically { it / 6 }) {
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
