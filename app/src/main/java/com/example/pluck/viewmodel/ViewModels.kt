@@ -10,9 +10,11 @@ import com.example.pluck.domain.model.ConnectionResult
 import com.example.pluck.domain.model.Journey
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
+import com.example.pluck.domain.model.LocalAiModelState
 import com.example.pluck.domain.repository.JourneyRepository
 import com.example.pluck.domain.repository.SettingsRepository
 import com.example.pluck.domain.repository.StoryRepository
+import com.example.pluck.domain.repository.LocalAiRepository
 import com.example.pluck.domain.usecase.GenerateStoryUseCase
 import com.example.pluck.domain.usecase.StoryProviderRegistry
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -116,4 +118,12 @@ class SettingsViewModel @Inject constructor(
         val result = if (provider.requiresApiKey && key.isBlank()) ConnectionResult.InvalidKey else providers.selected(provider).testConnection(key)
         _uiState.value = _uiState.value.copy(testing = null, result = provider to result)
     }
+}
+
+@HiltViewModel
+class LocalAiViewModel @Inject constructor(private val localAi: LocalAiRepository) : ViewModel() {
+    val uiState: StateFlow<LocalAiModelState> = localAi.modelState.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalAiModelState())
+    init { refresh() }
+    fun refresh() = viewModelScope.launch { localAi.refresh() }
+    fun download() = viewModelScope.launch { localAi.download() }
 }

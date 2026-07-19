@@ -168,10 +168,3 @@ class ClaudeStoryProvider @Inject constructor(private val api: StoryApi) : RestS
     }
     override suspend fun probe(apiKey: String) { request(endpoint, headers(apiKey), payload("Reply only OK.", emptyList())) }
 }
-
-/** A safe placeholder until MediaPipe GenAI/LiteRT integration is deliberately enabled in a future release. */
-class LocalGemmaStoryProvider @Inject constructor() : StoryProvider {
-    override val type = AiProvider.LOCAL_GEMMA
-    override suspend fun generateStory(input: StoryGenerationInput, apiKey: String): GeneratedStory = throw UnsupportedOperationException("Local Gemma is experimental and is not enabled in this build.")
-    override suspend fun testConnection(apiKey: String): ConnectionResult = ConnectionResult.Failed("Local Gemma is experimental and is not enabled in this build.")
-}

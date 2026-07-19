@@ -51,13 +51,16 @@ import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.SettingsViewModel
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, onLocalAi: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     Column(Modifier.fillMaxSize()) {
         PluckTopAppBar("Settings", "Your keys stay on this device", onBack)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Story engine", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 12.dp))
-            ProviderSelector(state.provider, viewModel::select)
+            ProviderSelector(state.provider) { provider ->
+                viewModel.select(provider)
+                if (provider == AiProvider.LOCAL_GEMMA) onLocalAi()
+            }
             ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Lock, null); Text("Private by design", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 10.dp)) }
@@ -69,11 +72,11 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             AiProvider.entries.filter { it.requiresApiKey }.forEach { provider ->
                 ApiKeyCard(provider, state.keys[provider].orEmpty(), selected = state.provider == provider, testing = state.testing == provider, result = state.result?.takeIf { it.first == provider }?.second, onValueChange = { viewModel.updateKey(provider, it) }, onSave = { viewModel.saveKey(provider) }, onTest = { viewModel.test(provider) })
             }
-            ExpressiveCard(modifier = Modifier.fillMaxWidth().padding(bottom = 28.dp)) {
+            ExpressiveCard(onClick = onLocalAi, modifier = Modifier.fillMaxWidth().padding(bottom = 28.dp)) {
                 Column(Modifier.padding(20.dp)) {
-                    Text("Local Gemma", style = MaterialTheme.typography.titleMedium)
-                    Text("Experimental on-device inference is intentionally disabled until the MediaPipe GenAI / LiteRT runtime is ready.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
-                    StatusPill("Not available in this build", active = false)
+                    Text("Local AI", style = MaterialTheme.typography.titleMedium)
+                    Text("Download Google’s verified on-device model once, then create stories without uploading photos or prompts.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+                    StatusPill("Manage on-device model")
                 }
             }
         }

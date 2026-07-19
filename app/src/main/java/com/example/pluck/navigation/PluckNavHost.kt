@@ -29,6 +29,7 @@ import com.example.pluck.ui.components.LocalFloatingBarState
 import com.example.pluck.ui.screen.CaptureScreen
 import com.example.pluck.ui.screen.HomeScreen
 import com.example.pluck.ui.screen.SettingsScreen
+import com.example.pluck.ui.screen.LocalAiScreen
 import com.example.pluck.ui.screen.StoryScreen
 import com.example.pluck.ui.screen.TimelineScreen
 import com.example.pluck.viewmodel.HomeViewModel
@@ -84,7 +85,8 @@ fun PluckNavHost() {
             composable("story/{$JOURNEY_ID}", arguments = listOf(navArgument(JOURNEY_ID) { type = NavType.LongType })) {
                 StoryScreen(onBack = { navController.popBackStack() })
             }
-            composable("settings") { SettingsScreen(onBack = { navController.navigate("home") { launchSingleTop = true } }) }
+            composable("settings") { SettingsScreen(onBack = { navController.navigate("home") { launchSingleTop = true } }, onLocalAi = { navController.navigate("local-ai") }) }
+            composable("local-ai") { LocalAiScreen(onBack = { navController.popBackStack() }) }
         }
     }
     }

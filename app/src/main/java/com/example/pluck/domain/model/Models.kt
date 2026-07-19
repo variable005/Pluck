@@ -42,3 +42,17 @@ sealed interface ConnectionResult {
     data object NetworkError : ConnectionResult
     data class Failed(val message: String) : ConnectionResult
 }
+
+enum class LocalAiInstallStatus {
+    CHECKING, NOT_INSTALLED, DOWNLOADING, INSTALLED, UNAVAILABLE, FAILED
+}
+
+data class LocalAiModelState(
+    val status: LocalAiInstallStatus = LocalAiInstallStatus.CHECKING,
+    val modelName: String = "On-device Gemini Nano",
+    val downloadedBytes: Long = 0,
+    val totalBytes: Long = 0,
+    val message: String? = null
+) {
+    val progress: Float? get() = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes else null
+}
