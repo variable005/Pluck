@@ -28,6 +28,7 @@ import com.example.pluck.ui.components.MainDestination
 import com.example.pluck.ui.components.FloatingBarState
 import com.example.pluck.ui.components.LocalFloatingBarState
 import com.example.pluck.ui.components.LocalHapticMode
+import com.example.pluck.ui.components.LiquidGlassBackdrop
 import com.example.pluck.ui.screen.CaptureScreen
 import com.example.pluck.ui.screen.HomeScreen
 import com.example.pluck.ui.screen.LibraryScreen
@@ -62,7 +63,7 @@ fun PluckNavHost() {
         LocalFloatingBarState provides floatingBarState,
         LocalHapticMode provides hapticMode
     ) {
-    Box(Modifier.fillMaxSize()) {
+    LiquidGlassBackdrop(Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = "home",

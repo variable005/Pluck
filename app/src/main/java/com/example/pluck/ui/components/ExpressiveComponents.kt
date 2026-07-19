@@ -15,11 +15,13 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -40,7 +42,6 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItem
@@ -79,6 +80,25 @@ class FloatingBarState(initiallyVisible: Boolean = true) {
 
 val LocalFloatingBarState = staticCompositionLocalOf<FloatingBarState> { error("FloatingBarState is not provided") }
 
+/** A neutral application canvas used by all destinations. */
+@Composable
+fun LiquidGlassBackdrop(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = modifier.background(colors.background),
+        content = content
+    )
+}
+
+@Composable
+private fun glassBorder() = BorderStroke(
+    width = 1.dp,
+    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.11f)
+)
+
 @Composable
 fun FloatingNavigationBar(selected: MainDestination, onDestinationSelected: (MainDestination) -> Unit, visible: Boolean, modifier: Modifier = Modifier) {
     val haptics = rememberPluckHaptics()
@@ -94,7 +114,8 @@ fun FloatingNavigationBar(selected: MainDestination, onDestinationSelected: (Mai
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            border = glassBorder(),
             tonalElevation = 4.dp,
             shadowElevation = 8.dp
         ) {
@@ -135,8 +156,9 @@ fun ExpressiveCard(onClick: (() -> Unit)? = null, modifier: Modifier = Modifier,
         ),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = glassBorder(),
         tonalElevation = if (pressed) 4.dp else 1.dp,
-        shadowElevation = if (pressed) 4.dp else 0.dp
+        shadowElevation = if (pressed) 8.dp else 2.dp
     ) { Column(content = content) }
 }
 
@@ -173,9 +195,25 @@ fun PluckTopAppBar(
     TopAppBar(
         modifier = modifier,
         title = {
-            Column {
-                Text(title, style = MaterialTheme.typography.titleLarge)
-                AnimatedVisibility(subtitle != null) { subtitle?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = glassBorder(),
+                tonalElevation = 2.dp,
+                shadowElevation = 5.dp
+            ) {
+                Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleMedium)
+                    AnimatedVisibility(subtitle != null) {
+                        subtitle?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         },
         navigationIcon = {
@@ -186,9 +224,10 @@ fun PluckTopAppBar(
                         .size(48.dp)
                         .semantics { contentDescription = "Navigate back" },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = glassBorder(),
                     tonalElevation = 4.dp,
-                    shadowElevation = 8.dp
+                    shadowElevation = 12.dp
                 ) {
                     androidx.compose.material3.IconButton(
                         onClick = {
@@ -240,7 +279,11 @@ fun LoadingView(label: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun StatusPill(text: String, active: Boolean = true) {
-    Surface(shape = MaterialTheme.shapes.small, color = if (active) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = if (active) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        border = glassBorder()
+    ) {
         Text(text, Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.labelLarge, color = if (active) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
