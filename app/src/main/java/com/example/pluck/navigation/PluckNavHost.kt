@@ -2,6 +2,9 @@ package com.example.pluck.navigation
 
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
@@ -71,10 +74,24 @@ fun PluckNavHost() {
             navController = navController,
             startDestination = "home",
             modifier = Modifier.fillMaxSize().padding(bottom = padding.calculateBottomPadding()),
-            enterTransition = { fadeIn() },
-            exitTransition = { fadeOut() },
-            popEnterTransition = { fadeIn() },
-            popExitTransition = { fadeOut() }
+            // A restrained shared-axis motion gives destinations spatial continuity while
+            // still respecting the system animator-duration scale.
+            enterTransition = {
+                fadeIn(animationSpec = tween(220)) +
+                    slideInHorizontally(animationSpec = tween(280)) { it / 12 }
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(160)) +
+                    slideOutHorizontally(animationSpec = tween(220)) { -it / 18 }
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(220)) +
+                    slideInHorizontally(animationSpec = tween(280)) { -it / 12 }
+            },
+            popExitTransition = {
+                fadeOut(animationSpec = tween(160)) +
+                    slideOutHorizontally(animationSpec = tween(220)) { it / 18 }
+            }
         ) {
             composable("home") { HomeScreen(onJourney = { navController.navigate("timeline/$it") }, onSettings = { navController.navigate("settings") }) }
             composable("journey") { JourneyGateway(onJourney = { navController.navigate("timeline/$it") }) }

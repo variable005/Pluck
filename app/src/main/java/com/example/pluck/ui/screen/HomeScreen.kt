@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Settings
@@ -41,26 +44,31 @@ import com.example.pluck.viewmodel.HomeViewModel
 @Composable
 fun HomeScreen(onJourney: (Long) -> Unit, onSettings: () -> Unit, viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Column(
-        Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        HomeHeader(onSettings)
-        AnimatedVisibility(true, enter = fadeIn(spring()) + slideInVertically { it / 6 }) {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                HeroIllustration()
-                Text("Make today\nfeel like a story.", style = MaterialTheme.typography.displaySmall)
-                Text("Capture a place. Keep moving. When the day is ready, Pluck turns the path into fiction.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                JourneySummaryCard(hasJourney = state.journey != null)
-                AnimatedPrimaryButton(
-                    text = if (state.journey == null) "Start today’s journey" else "Continue today’s journey",
-                    onClick = { viewModel.start(onJourney) },
-                    modifier = Modifier.fillMaxWidth(),
-                    icon = { Icon(if (state.journey == null) Icons.Rounded.TravelExplore else Icons.Rounded.AutoStories, contentDescription = null) }
-                )
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .widthIn(max = 680.dp)
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, top = 0.dp, end = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            HomeHeader(onSettings)
+            AnimatedVisibility(true, enter = fadeIn(spring()) + slideInVertically { it / 6 }) {
+                Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    HeroIllustration()
+                    Text("Make today\nfeel like a story.", style = MaterialTheme.typography.displaySmall)
+                    Text("Capture a place. Keep moving. When the day is ready, Pluck turns the path into fiction.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    JourneySummaryCard(hasJourney = state.journey != null)
+                    AnimatedPrimaryButton(
+                        text = if (state.journey == null) "Start today’s journey" else "Continue today’s journey",
+                        onClick = { viewModel.start(onJourney) },
+                        modifier = Modifier.fillMaxWidth(),
+                        icon = { Icon(if (state.journey == null) Icons.Rounded.TravelExplore else Icons.Rounded.AutoStories, contentDescription = null) }
+                    )
+                }
             }
         }
     }

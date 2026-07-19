@@ -46,9 +46,11 @@ import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.ui.components.AnimatedPrimaryButton
 import com.example.pluck.ui.components.EmptyState
 import com.example.pluck.ui.components.ExpressiveCard
+import com.example.pluck.ui.components.PluckHapticEvent
 import com.example.pluck.ui.components.PluckTopAppBar
 import com.example.pluck.ui.components.LocalFloatingBarState
 import com.example.pluck.ui.components.StatusPill
+import com.example.pluck.ui.components.rememberPluckHaptics
 import com.example.pluck.viewmodel.TimelineViewModel
 import java.io.File
 import java.time.LocalDate
@@ -65,6 +67,7 @@ fun TimelineScreen(
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val floatingBar = LocalFloatingBarState.current
+    val haptics = rememberPluckHaptics()
     val journey = state.journey
     // The normal route only represents today's active journey. While Room is loading it,
     // keep that route actionable instead of briefly presenting an archive empty state.
@@ -83,7 +86,10 @@ fun TimelineScreen(
                 ExtendedFloatingActionButton(
                     text = { Text("Add place") },
                     icon = { Icon(Icons.Rounded.AddAPhoto, contentDescription = null) },
-                    onClick = { onCapture(viewModel.journeyId) },
+                    onClick = {
+                        haptics.perform(PluckHapticEvent.PrimaryAction)
+                        onCapture(viewModel.journeyId)
+                    },
                     expanded = !listState.isScrollInProgress,
                     shape = MaterialTheme.shapes.medium,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -135,6 +141,7 @@ fun TimelineScreen(
 
 @Composable
 private fun TimelineItem(photo: JourneyPhoto, canDelete: Boolean, onDelete: () -> Unit) {
+    val haptics = rememberPluckHaptics()
     AnimatedVisibility(visible = true, enter = fadeIn() + slideInVertically { it / 5 }) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(end = 12.dp)) {
@@ -156,7 +163,12 @@ private fun TimelineItem(photo: JourneyPhoto, canDelete: Boolean, onDelete: () -
                             Text(photo.address ?: "A place without a label", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                         }
                         if (canDelete) {
-                            IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete this place") }
+                            IconButton(
+                                onClick = {
+                                    haptics.perform(PluckHapticEvent.DestructiveAction)
+                                    onDelete()
+                                }
+                            ) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete this place") }
                         }
                     }
                 }

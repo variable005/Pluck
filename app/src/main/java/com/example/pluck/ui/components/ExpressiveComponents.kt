@@ -57,8 +57,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -81,6 +79,7 @@ val LocalFloatingBarState = staticCompositionLocalOf<FloatingBarState> { error("
 
 @Composable
 fun FloatingNavigationBar(selected: MainDestination, onDestinationSelected: (MainDestination) -> Unit, visible: Boolean, modifier: Modifier = Modifier) {
+    val haptics = rememberPluckHaptics()
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(220)) + expandVertically(expandFrom = Alignment.Bottom),
@@ -96,10 +95,14 @@ fun FloatingNavigationBar(selected: MainDestination, onDestinationSelected: (Mai
         ) {
             Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 MainDestination.entries.forEach { destination ->
-                    val haptics = LocalHapticFeedback.current
                     NavigationBarItem(
                         selected = selected == destination,
-                        onClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onDestinationSelected(destination) },
+                        onClick = {
+                            if (destination != selected) {
+                                haptics.perform(PluckHapticEvent.Navigation)
+                                onDestinationSelected(destination)
+                            }
+                        },
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(destination.label) },
                         alwaysShowLabel = false,
@@ -134,8 +137,12 @@ fun ExpressiveCard(onClick: (() -> Unit)? = null, modifier: Modifier = Modifier,
 
 @Composable
 fun AnimatedPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, icon: (@Composable (() -> Unit))? = null) {
+    val haptics = rememberPluckHaptics()
     Button(
-        onClick = onClick,
+        onClick = {
+            haptics.perform(PluckHapticEvent.PrimaryAction)
+            onClick()
+        },
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         modifier = modifier.height(56.dp),
@@ -157,6 +164,7 @@ fun PluckTopAppBar(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets
 ) {
+    val haptics = rememberPluckHaptics()
     TopAppBar(
         modifier = modifier,
         title = {
@@ -166,7 +174,13 @@ fun PluckTopAppBar(
             }
         },
         navigationIcon = {
-            if (onBack != null) androidx.compose.material3.IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Navigate back" }) { Text("‹", style = MaterialTheme.typography.headlineLarge) }
+            if (onBack != null) androidx.compose.material3.IconButton(
+                onClick = {
+                    haptics.perform(PluckHapticEvent.Navigation)
+                    onBack()
+                },
+                modifier = Modifier.semantics { contentDescription = "Navigate back" }
+            ) { Text("‹", style = MaterialTheme.typography.headlineLarge) }
         },
         actions = { actions?.invoke() },
         windowInsets = windowInsets,

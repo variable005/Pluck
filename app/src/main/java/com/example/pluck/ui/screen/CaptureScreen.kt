@@ -49,7 +49,9 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pluck.ui.components.LoadingView
+import com.example.pluck.ui.components.PluckHapticEvent
 import com.example.pluck.ui.components.PluckTopAppBar
+import com.example.pluck.ui.components.rememberPluckHaptics
 import com.example.pluck.viewmodel.CaptureViewModel
 
 @Composable
@@ -91,6 +93,7 @@ private fun PermissionExperience(onAllow: () -> Unit, onBack: () -> Unit) {
 private fun CaptureExperience(saving: Boolean, hasLocation: Boolean, createFile: () -> java.io.File, onSaved: (java.io.File) -> Unit, onError: (java.io.File) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val haptics = rememberPluckHaptics()
     val imageCapture = remember { ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build() }
     val previewView = remember { PreviewView(context) }
     var flash by remember { mutableStateOf(false) }
@@ -130,11 +133,16 @@ private fun CaptureExperience(saving: Boolean, hasLocation: Boolean, createFile:
         } else {
             IconButton(
                 onClick = {
+                    haptics.perform(PluckHapticEvent.Capture)
                     flash = true
                     val file = createFile()
                     imageCapture.takePicture(ImageCapture.OutputFileOptions.Builder(file).build(), ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) { flash = false; onSaved(file) }
-                        override fun onError(exception: ImageCaptureException) { flash = false; onError(file) }
+                        override fun onError(exception: ImageCaptureException) {
+                            flash = false
+                            haptics.perform(PluckHapticEvent.Error)
+                            onError(file)
+                        }
                     })
                 },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 28.dp).size(80.dp).scale(1f)

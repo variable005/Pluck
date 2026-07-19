@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -102,34 +103,39 @@ private fun JourneyLibrary(
     onOpenStory: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item(key = "library_heading") {
-            Column(Modifier.padding(bottom = 8.dp)) {
-                Text("Recent journeys", style = MaterialTheme.typography.headlineLarge)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "${journeys.size} ${if (journeys.size == 1) "journey" else "journeys"} saved locally",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+    Box(modifier) {
+        LazyColumn(
+            modifier = Modifier
+                .widthIn(max = 760.dp)
+                .fillMaxSize()
+                .align(Alignment.TopCenter),
+            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item(key = "library_heading") {
+                Column(Modifier.padding(bottom = 8.dp)) {
+                    Text("Recent journeys", style = MaterialTheme.typography.headlineLarge)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "${journeys.size} ${if (journeys.size == 1) "journey" else "journeys"} saved locally",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-        }
-        items(journeys, key = { it.journey.id }) { journey ->
-            AnimatedVisibility(
-                visible = true,
-                enter = fadeIn() + slideInVertically { it / 8 }
-            ) {
-                JourneyLibraryCard(
-                    item = journey,
-                    onOpen = {
-                        if (journey.story != null) onOpenStory(journey.journey.id)
-                        else onOpenJourney(journey.journey.id)
-                    }
-                )
+            items(journeys, key = { it.journey.id }) { journey ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically { it / 8 }
+                ) {
+                    JourneyLibraryCard(
+                        item = journey,
+                        onOpen = {
+                            if (journey.story != null) onOpenStory(journey.journey.id)
+                            else onOpenJourney(journey.journey.id)
+                        }
+                    )
+                }
             }
         }
     }
