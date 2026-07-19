@@ -109,7 +109,7 @@ private fun JourneyLibrary(
                 .widthIn(max = 760.dp)
                 .fillMaxSize()
                 .align(Alignment.TopCenter),
-            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 32.dp),
+            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(key = "library_heading") {

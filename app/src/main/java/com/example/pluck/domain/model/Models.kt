@@ -7,6 +7,20 @@ enum class AiProvider(val displayName: String) {
     val requiresApiKey: Boolean get() = this != LOCAL_GEMMA
 }
 
+/** Controls how much tactile confirmation Pluck provides for direct user actions. */
+enum class HapticMode(val displayName: String) {
+    OFF("Off"),
+    ESSENTIAL("Essential"),
+    FULL("Full")
+}
+
+/** Selects whether Pluck follows the device, stays light, or stays dark. */
+enum class ThemeMode(val displayName: String) {
+    SYSTEM("System"),
+    LIGHT("Light"),
+    DARK("Dark")
+}
+
 data class Journey(val id: Long, val date: String, val timeZoneId: String)
 
 data class JourneyPhoto(

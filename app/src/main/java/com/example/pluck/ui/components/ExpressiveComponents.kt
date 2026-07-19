@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Settings
@@ -87,13 +89,16 @@ fun FloatingNavigationBar(selected: MainDestination, onDestinationSelected: (Mai
         modifier = modifier
     ) {
         Surface(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-            tonalElevation = 6.dp,
-            shadowElevation = 12.dp
+            tonalElevation = 4.dp,
+            shadowElevation = 8.dp
         ) {
-            Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 MainDestination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = selected == destination,
@@ -103,8 +108,8 @@ fun FloatingNavigationBar(selected: MainDestination, onDestinationSelected: (Mai
                                 onDestinationSelected(destination)
                             }
                         },
-                        icon = { Icon(destination.icon, contentDescription = null) },
-                        label = { Text(destination.label) },
+                        icon = { Icon(destination.icon, contentDescription = destination.label) },
+                        label = null,
                         alwaysShowLabel = false,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                             indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -174,13 +179,30 @@ fun PluckTopAppBar(
             }
         },
         navigationIcon = {
-            if (onBack != null) androidx.compose.material3.IconButton(
-                onClick = {
-                    haptics.perform(PluckHapticEvent.Navigation)
-                    onBack()
-                },
-                modifier = Modifier.semantics { contentDescription = "Navigate back" }
-            ) { Text("‹", style = MaterialTheme.typography.headlineLarge) }
+            if (onBack != null) {
+                Surface(
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .size(48.dp)
+                        .semantics { contentDescription = "Navigate back" },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                    tonalElevation = 4.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    androidx.compose.material3.IconButton(
+                        onClick = {
+                            haptics.perform(PluckHapticEvent.Navigation)
+                            onBack()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ArrowBack,
+                            contentDescription = null
+                        )
+                    }
+                }
+            }
         },
         actions = { actions?.invoke() },
         windowInsets = windowInsets,

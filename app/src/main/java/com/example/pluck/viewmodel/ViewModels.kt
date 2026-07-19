@@ -8,6 +8,8 @@ import com.example.pluck.data.location.LocationCapture
 import com.example.pluck.domain.model.AiProvider
 import com.example.pluck.domain.model.ConnectionResult
 import com.example.pluck.domain.model.Journey
+import com.example.pluck.domain.model.HapticMode
+import com.example.pluck.domain.model.ThemeMode
 import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
@@ -128,7 +130,15 @@ class StoryViewModel @Inject constructor(
     fun clearError() { _generation.value = _generation.value.copy(error = null) }
 }
 
-data class SettingsUiState(val provider: AiProvider = AiProvider.GEMINI, val keys: Map<AiProvider, String> = emptyMap(), val testing: AiProvider? = null, val result: Pair<AiProvider, ConnectionResult>? = null)
+data class SettingsUiState(
+    val provider: AiProvider = AiProvider.GEMINI,
+    val hapticMode: HapticMode = HapticMode.ESSENTIAL,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val dynamicColor: Boolean = true,
+    val keys: Map<AiProvider, String> = emptyMap(),
+    val testing: AiProvider? = null,
+    val result: Pair<AiProvider, ConnectionResult>? = null
+)
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -143,6 +153,21 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settings.observeProvider().collect { provider ->
                 _uiState.update { it.copy(provider = provider) }
+            }
+        }
+        viewModelScope.launch {
+            settings.observeHapticMode().collect { mode ->
+                _uiState.update { it.copy(hapticMode = mode) }
+            }
+        }
+        viewModelScope.launch {
+            settings.observeThemeMode().collect { mode ->
+                _uiState.update { it.copy(themeMode = mode) }
+            }
+        }
+        viewModelScope.launch {
+            settings.observeDynamicColor().collect { enabled ->
+                _uiState.update { it.copy(dynamicColor = enabled) }
             }
         }
     }
@@ -170,6 +195,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun select(provider: AiProvider) = viewModelScope.launch { settings.setProvider(provider) }
+    fun setHapticMode(mode: HapticMode) = viewModelScope.launch { settings.setHapticMode(mode) }
+    fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { settings.setThemeMode(mode) }
+    fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { settings.setDynamicColor(enabled) }
     fun updateKey(provider: AiProvider, value: String) { _uiState.value = _uiState.value.copy(keys = _uiState.value.keys + (provider to value)) }
     fun saveKey(provider: AiProvider) = viewModelScope.launch { settings.saveApiKey(provider, _uiState.value.keys[provider].orEmpty()) }
     fun test(provider: AiProvider) = viewModelScope.launch {
@@ -178,6 +206,25 @@ class SettingsViewModel @Inject constructor(
         val result = if (provider.requiresApiKey && key.isBlank()) ConnectionResult.InvalidKey else providers.selected(provider).testConnection(key)
         _uiState.value = _uiState.value.copy(testing = null, result = provider to result)
     }
+}
+
+/** Keeps app-wide haptic behavior synchronized with the persisted Settings preference. */
+@HiltViewModel
+class HapticSettingsViewModel @Inject constructor(settings: SettingsRepository) : ViewModel() {
+    val mode: StateFlow<HapticMode> = settings.observeHapticMode()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HapticMode.ESSENTIAL)
+}
+
+data class ThemePreferences(val mode: ThemeMode = ThemeMode.SYSTEM, val dynamicColor: Boolean = true)
+
+/** Keeps the process-wide Compose theme synchronized with the saved appearance preference. */
+@HiltViewModel
+class ThemeSettingsViewModel @Inject constructor(settings: SettingsRepository) : ViewModel() {
+    val preferences: StateFlow<ThemePreferences> = combine(
+        settings.observeThemeMode(),
+        settings.observeDynamicColor()
+    ) { mode, dynamicColor -> ThemePreferences(mode, dynamicColor) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemePreferences())
 }
 
 @HiltViewModel

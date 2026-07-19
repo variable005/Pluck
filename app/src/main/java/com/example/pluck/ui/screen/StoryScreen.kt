@@ -26,12 +26,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.Refresh
@@ -42,6 +44,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -74,7 +77,7 @@ import com.example.pluck.viewmodel.StoryViewModel
 import kotlin.math.ceil
 
 private val ReaderMaxWidth = 720.dp
-private val ReaderActionDockHeight = 88.dp
+private val ReaderActionDockHeight = 104.dp
 
 /**
  * Presents a generated Pluck story in a calm, distraction-free reading surface.
@@ -314,110 +317,149 @@ private fun StoryReader(
     var revealed by rememberSaveable(title) { mutableStateOf(false) }
     LaunchedEffect(title) { revealed = true }
 
-    Scaffold(
-        topBar = { PluckTopAppBar("Your story", onBack = onBack) }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                ReadingProgressBar(progress = displayedProgress)
-                BoxWithConstraints(modifier = Modifier.weight(1f)) {
-                    val horizontalPadding = if (maxWidth >= 840.dp) 40.dp else 20.dp
-                    Column(
+    Box(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val horizontalPadding = if (maxWidth >= 840.dp) 40.dp else 20.dp
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scroll)
+                    .padding(horizontal = horizontalPadding),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(Modifier.height(112.dp))
+                AnimatedVisibility(
+                    visible = revealed,
+                    enter = fadeIn(tween(500)) + slideInVertically(animationSpec = tween(500, easing = FastOutSlowInEasing)) { it / 12 }
+                ) {
+                    StoryHero(
+                        title = title,
+                        provider = provider,
+                        readingMinutes = readingMinutes,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(scroll)
-                            .padding(horizontal = horizontalPadding),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        AnimatedVisibility(
-                            visible = revealed,
-                            enter = fadeIn(tween(500)) + slideInVertically(animationSpec = tween(500, easing = FastOutSlowInEasing)) { it / 12 }
-                        ) {
-                            StoryHero(
-                                title = title,
-                                provider = provider,
-                                readingMinutes = readingMinutes,
-                                modifier = Modifier
-                                    .widthIn(max = ReaderMaxWidth)
-                                    .fillMaxWidth()
-                                    .padding(top = 28.dp)
-                            )
-                        }
+                            .widthIn(max = ReaderMaxWidth)
+                            .fillMaxWidth()
+                            .padding(top = 28.dp)
+                    )
+                }
 
-                        AnimatedVisibility(
-                            visible = isRefreshing,
-                            enter = fadeIn() + slideInVertically { -it / 3 },
-                            exit = fadeOut() + slideOutVertically { -it / 3 },
-                            modifier = Modifier
-                                .widthIn(max = ReaderMaxWidth)
-                                .fillMaxWidth()
-                        ) {
-                            StoryRegeneratingNotice(modifier = Modifier.padding(top = 16.dp))
-                        }
+                AnimatedVisibility(
+                    visible = isRefreshing,
+                    enter = fadeIn() + slideInVertically { -it / 3 },
+                    exit = fadeOut() + slideOutVertically { -it / 3 },
+                    modifier = Modifier
+                        .widthIn(max = ReaderMaxWidth)
+                        .fillMaxWidth()
+                ) {
+                    StoryRegeneratingNotice(modifier = Modifier.padding(top = 16.dp))
+                }
 
-                        AnimatedVisibility(
-                            visible = generationError != null,
-                            enter = fadeIn() + slideInVertically { -it / 3 },
-                            exit = fadeOut() + slideOutVertically { -it / 3 },
-                            modifier = Modifier
-                                .widthIn(max = ReaderMaxWidth)
-                                .fillMaxWidth()
-                        ) {
-                            generationError?.let { message ->
-                                StoryReaderError(message, modifier = Modifier.padding(top = 16.dp))
-                            }
-                        }
-
-                        StoryBody(
-                            paragraphs = paragraphs,
-                            modifier = Modifier
-                                .widthIn(max = ReaderMaxWidth)
-                                .fillMaxWidth()
-                                .padding(top = 24.dp, bottom = ReaderActionDockHeight + 36.dp)
-                        )
+                AnimatedVisibility(
+                    visible = generationError != null,
+                    enter = fadeIn() + slideInVertically { -it / 3 },
+                    exit = fadeOut() + slideOutVertically { -it / 3 },
+                    modifier = Modifier
+                        .widthIn(max = ReaderMaxWidth)
+                        .fillMaxWidth()
+                ) {
+                    generationError?.let { message ->
+                        StoryReaderError(message, modifier = Modifier.padding(top = 16.dp))
                     }
                 }
-            }
 
-            StoryActionDock(
-                compact = compactActions,
-                refreshing = isRefreshing,
-                onRefresh = onRefresh,
-                onShare = onShare,
-                onSave = onSave,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
-            )
+                StoryBody(
+                    paragraphs = paragraphs,
+                    modifier = Modifier
+                        .widthIn(max = ReaderMaxWidth)
+                        .fillMaxWidth()
+                        .padding(top = 24.dp, bottom = ReaderActionDockHeight + 36.dp)
+                )
+            }
         }
+
+        FloatingReaderHeader(
+            progress = displayedProgress,
+            onBack = onBack,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        )
+
+        StoryActionDock(
+            compact = compactActions,
+            refreshing = isRefreshing,
+            onRefresh = onRefresh,
+            onShare = onShare,
+            onSave = onSave,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        )
     }
 }
 
 @Composable
-private fun ReadingProgressBar(progress: Float) {
+private fun FloatingReaderHeader(progress: Float, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = rememberPluckHaptics()
     val percentage = (progress * 100).toInt()
-    Column {
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-        )
-        Text(
-            text = if (percentage == 0) "Begin reading" else "$percentage% read",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 6.dp)
-                .semantics { contentDescription = "Reading progress: $percentage percent" },
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End
-        )
+    Row(
+        modifier = modifier
+            .widthIn(max = ReaderMaxWidth)
+            .fillMaxWidth()
+            .semantics { contentDescription = "Your story, reading progress: $percentage percent" },
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier = Modifier.size(48.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+            tonalElevation = 6.dp,
+            shadowElevation = 12.dp
+        ) {
+            IconButton(onClick = {
+                haptics.perform(PluckHapticEvent.Navigation)
+                onBack()
+            }) {
+                Icon(Icons.Rounded.ArrowBack, contentDescription = "Navigate back")
+            }
+        }
+        Surface(
+            modifier = Modifier.weight(1f),
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+            tonalElevation = 6.dp,
+            shadowElevation = 12.dp
+        ) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Your story", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            text = if (percentage == 0) "Begin reading" else "$percentage% read",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "$percentage%",
+                        modifier = Modifier.padding(start = 10.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
+            }
+        }
     }
 }
 

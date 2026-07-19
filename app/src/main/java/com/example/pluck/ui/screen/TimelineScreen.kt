@@ -99,7 +99,9 @@ fun TimelineScreen(
         },
         bottomBar = {
             AnimatedVisibility(state.story != null || state.photos.size >= 2, enter = fadeIn() + slideInVertically { it / 2 }) {
-                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+                // The app-level navigation floats above this bar, so reserve just enough
+                // space for both controls without giving the screen a cropped bottom edge.
+                Column(Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 88.dp)) {
                     AnimatedPrimaryButton(
                         text = if (state.story == null) "Generate your story" else "Read your story",
                         onClick = { onStory(viewModel.journeyId) },
@@ -123,7 +125,7 @@ fun TimelineScreen(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 112.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 200.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 stickyHeader {

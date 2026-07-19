@@ -5,9 +5,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
@@ -15,8 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -29,6 +27,7 @@ import com.example.pluck.ui.components.FloatingNavigationBar
 import com.example.pluck.ui.components.MainDestination
 import com.example.pluck.ui.components.FloatingBarState
 import com.example.pluck.ui.components.LocalFloatingBarState
+import com.example.pluck.ui.components.LocalHapticMode
 import com.example.pluck.ui.screen.CaptureScreen
 import com.example.pluck.ui.screen.HomeScreen
 import com.example.pluck.ui.screen.LibraryScreen
@@ -37,6 +36,7 @@ import com.example.pluck.ui.screen.LocalAiScreen
 import com.example.pluck.ui.screen.StoryScreen
 import com.example.pluck.ui.screen.TimelineScreen
 import com.example.pluck.viewmodel.HomeViewModel
+import com.example.pluck.viewmodel.HapticSettingsViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
 
@@ -45,6 +45,8 @@ private const val JOURNEY_ID = "journeyId"
 @Composable
 fun PluckNavHost() {
     val navController = rememberNavController()
+    val hapticSettings: HapticSettingsViewModel = hiltViewModel()
+    val hapticMode by hapticSettings.mode.collectAsState()
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route.orEmpty()
     val selected = when {
@@ -56,24 +58,15 @@ fun PluckNavHost() {
     val barVisible = route !in setOf("capture/{$JOURNEY_ID}", "story/{$JOURNEY_ID}")
     val floatingBarState = remember { FloatingBarState() }
     LaunchedEffect(route) { floatingBarState.visible = barVisible }
-    CompositionLocalProvider(LocalFloatingBarState provides floatingBarState) {
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
-        bottomBar = {
-            FloatingNavigationBar(selected, onDestinationSelected = { destination ->
-                if (destination.route != route) navController.navigate(destination.route) {
-                    launchSingleTop = true
-                    restoreState = true
-                    popUpTo("home") { saveState = true }
-                }
-            }, visible = barVisible && floatingBarState.visible)
-        }
-    ) { padding ->
+    CompositionLocalProvider(
+        LocalFloatingBarState provides floatingBarState,
+        LocalHapticMode provides hapticMode
+    ) {
+    Box(Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = "home",
-            modifier = Modifier.fillMaxSize().padding(bottom = padding.calculateBottomPadding()),
+            modifier = Modifier.fillMaxSize(),
             // A restrained shared-axis motion gives destinations spatial continuity while
             // still respecting the system animator-duration scale.
             enterTransition = {
@@ -127,6 +120,18 @@ fun PluckNavHost() {
             composable("settings") { SettingsScreen(onBack = { navController.navigate("home") { launchSingleTop = true } }, onLocalAi = { navController.navigate("local-ai") }) }
             composable("local-ai") { LocalAiScreen(onBack = { navController.popBackStack() }) }
         }
+        FloatingNavigationBar(
+            selected = selected,
+            onDestinationSelected = { destination ->
+                if (destination.route != route) navController.navigate(destination.route) {
+                    launchSingleTop = true
+                    restoreState = true
+                    popUpTo("home") { saveState = true }
+                }
+            },
+            visible = barVisible && floatingBarState.visible,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
     }
 }

@@ -68,7 +68,7 @@ fun LocalAiScreen(onBack: () -> Unit, viewModel: LocalAiViewModel = hiltViewMode
                 "LiteRT-LM runs the verified model entirely on-device. After installation, Pluck never needs the internet to analyze journey photos or write stories.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 28.dp)
+                modifier = Modifier.padding(bottom = 120.dp)
             )
         }
     }

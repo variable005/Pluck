@@ -1,6 +1,8 @@
 package com.example.pluck.domain.repository
 
 import com.example.pluck.domain.model.AiProvider
+import com.example.pluck.domain.model.HapticMode
+import com.example.pluck.domain.model.ThemeMode
 import com.example.pluck.domain.model.Journey
 import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
@@ -25,7 +27,13 @@ interface StoryRepository {
 
 interface SettingsRepository {
     fun observeProvider(): Flow<AiProvider>
+    fun observeHapticMode(): Flow<HapticMode>
+    fun observeThemeMode(): Flow<ThemeMode>
+    fun observeDynamicColor(): Flow<Boolean>
     suspend fun setProvider(provider: AiProvider)
+    suspend fun setHapticMode(mode: HapticMode)
+    suspend fun setThemeMode(mode: ThemeMode)
+    suspend fun setDynamicColor(enabled: Boolean)
     suspend fun apiKey(provider: AiProvider): String?
     suspend fun saveApiKey(provider: AiProvider, key: String)
 }

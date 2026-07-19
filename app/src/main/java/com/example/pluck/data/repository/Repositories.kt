@@ -11,6 +11,8 @@ import com.example.pluck.data.database.JourneyPhotoEntity
 import com.example.pluck.data.database.StoryDao
 import com.example.pluck.data.database.StoryEntity
 import com.example.pluck.domain.model.AiProvider
+import com.example.pluck.domain.model.HapticMode
+import com.example.pluck.domain.model.ThemeMode
 import com.example.pluck.domain.model.Journey
 import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
@@ -99,10 +101,52 @@ class SecureSettingsRepository @Inject constructor(@ApplicationContext context: 
         awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
+    override fun observeHapticMode(): Flow<HapticMode> = callbackFlow {
+        fun current() = HapticMode.entries.firstOrNull {
+            it.name == preferences.getString(HAPTIC_MODE_KEY, HapticMode.ESSENTIAL.name)
+        } ?: HapticMode.ESSENTIAL
+        trySend(current())
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == HAPTIC_MODE_KEY) trySend(current())
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    override fun observeThemeMode(): Flow<ThemeMode> = callbackFlow {
+        fun current() = ThemeMode.entries.firstOrNull {
+            it.name == preferences.getString(THEME_MODE_KEY, ThemeMode.SYSTEM.name)
+        } ?: ThemeMode.SYSTEM
+        trySend(current())
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == THEME_MODE_KEY) trySend(current())
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    override fun observeDynamicColor(): Flow<Boolean> = callbackFlow {
+        fun current() = preferences.getBoolean(DYNAMIC_COLOR_KEY, true)
+        trySend(current())
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == DYNAMIC_COLOR_KEY) trySend(current())
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
     override suspend fun setProvider(provider: AiProvider) { preferences.edit().putString(PROVIDER_KEY, provider.name).apply() }
+    override suspend fun setHapticMode(mode: HapticMode) { preferences.edit().putString(HAPTIC_MODE_KEY, mode.name).apply() }
+    override suspend fun setThemeMode(mode: ThemeMode) { preferences.edit().putString(THEME_MODE_KEY, mode.name).apply() }
+    override suspend fun setDynamicColor(enabled: Boolean) { preferences.edit().putBoolean(DYNAMIC_COLOR_KEY, enabled).apply() }
     override suspend fun apiKey(provider: AiProvider): String? = preferences.getString(keyFor(provider), null)?.trim()?.takeIf { it.isNotEmpty() }
     override suspend fun saveApiKey(provider: AiProvider, key: String) { preferences.edit().putString(keyFor(provider), key.trim()).apply() }
 
     private fun keyFor(provider: AiProvider) = "api_key_${provider.name.lowercase()}"
-    private companion object { const val PROVIDER_KEY = "preferred_provider" }
+    private companion object {
+        const val PROVIDER_KEY = "preferred_provider"
+        const val HAPTIC_MODE_KEY = "haptic_mode"
+        const val THEME_MODE_KEY = "theme_mode"
+        const val DYNAMIC_COLOR_KEY = "dynamic_color"
+    }
 }
