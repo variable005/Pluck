@@ -14,10 +14,13 @@ import com.example.pluck.domain.provider.StoryProvider
 import com.example.pluck.domain.repository.LocalAiRepository
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -37,14 +40,16 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Immutable source manifest for the only model Pluck accepts in this release.
@@ -436,17 +441,14 @@ class GemmaLocalStoryProvider @Inject constructor(
                     preparedImages.forEach { add(Content.ImageFile(it.absolutePath)) }
                     add(Content.Text(localStoryPrompt(input)))
                 }
-                val response = StringBuilder()
-                try {
+                val response = try {
                     withTimeout(GENERATION_TIMEOUT_MS) {
-                        conversation.sendMessageAsync(Contents.of(contents), emptyMap()).collect { message ->
-                            message.contents.contents.filterIsInstance<Content.Text>().forEach { response.append(it.text) }
-                        }
+                        streamResponse(conversation, Contents.of(contents))
                     }
                 } finally {
                     conversation.cancelProcess()
                 }
-                parseLocalStory(response.toString())
+                parseLocalStory(response)
             }
         } finally {
             engine?.close()
@@ -480,6 +482,44 @@ class GemmaLocalStoryProvider @Inject constructor(
         const val GENERATION_TIMEOUT_MS = 12 * 60 * 1_000L
     }
 }
+
+/**
+ * Bridges LiteRT-LM's callback streaming API to a cancellable coroutine.
+ *
+ * The callback overload is deliberately used instead of LiteRT-LM 0.14's
+ * Flow overload: the latter contains a binary-incompatible channel default
+ * method call on Android. This keeps token streaming while avoiding that
+ * runtime-only crash.
+ */
+private suspend fun streamResponse(conversation: Conversation, contents: Contents): String =
+    suspendCancellableCoroutine { continuation ->
+        val response = StringBuilder()
+        val callback = object : MessageCallback {
+            override fun onMessage(message: Message) {
+                val text = message.contents.contents
+                    .filterIsInstance<Content.Text>()
+                    .joinToString(separator = "") { it.text }
+                synchronized(response) { response.append(text) }
+            }
+
+            override fun onDone() {
+                if (continuation.isActive) {
+                    continuation.resume(synchronized(response) { response.toString() })
+                }
+            }
+
+            override fun onError(throwable: Throwable) {
+                if (continuation.isActive) continuation.resumeWithException(throwable)
+            }
+        }
+
+        continuation.invokeOnCancellation { conversation.cancelProcess() }
+        try {
+            conversation.sendMessageAsync(contents, callback, emptyMap())
+        } catch (error: Throwable) {
+            if (continuation.isActive) continuation.resumeWithException(error)
+        }
+    }
 
 private fun localStoryPrompt(input: StoryGenerationInput): String = buildString {
     append("The attached images are one ordered journey. Write approximately 700 to 1200 words of original fiction inspired by every place. Never write a diary, travelogue, summary, or image-by-image description. Make every place matter naturally to one continuous plot. Keep characters, chronology, cause and effect, and setting details consistent. Return exactly: TITLE: <title> then STORY: <narrative>.")
