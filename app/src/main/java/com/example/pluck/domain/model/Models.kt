@@ -44,14 +44,20 @@ sealed interface ConnectionResult {
 }
 
 enum class LocalAiInstallStatus {
-    CHECKING, NOT_INSTALLED, DOWNLOADING, INSTALLED, UNAVAILABLE, FAILED
+    CHECKING, NOT_INSTALLED, DOWNLOADING, PAUSED, VERIFYING, INSTALLED, CORRUPTED, FAILED
 }
 
 data class LocalAiModelState(
     val status: LocalAiInstallStatus = LocalAiInstallStatus.CHECKING,
-    val modelName: String = "On-device Gemini Nano",
+    val modelName: String = "Gemma 4 E2B Instruct",
+    val modelVersion: String = "7022fb7",
+    val publisher: String = "Google AI Edge · LiteRT Community",
     val downloadedBytes: Long = 0,
     val totalBytes: Long = 0,
+    val requiredStorageBytes: Long = 0,
+    val availableStorageBytes: Long = 0,
+    val verified: Boolean = false,
+    val updateAvailable: Boolean = false,
     val message: String? = null
 ) {
     val progress: Float? get() = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes else null

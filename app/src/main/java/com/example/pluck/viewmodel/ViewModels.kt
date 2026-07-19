@@ -126,4 +126,8 @@ class LocalAiViewModel @Inject constructor(private val localAi: LocalAiRepositor
     init { refresh() }
     fun refresh() = viewModelScope.launch { localAi.refresh() }
     fun download() = viewModelScope.launch { localAi.download() }
+    fun pause() = viewModelScope.launch { localAi.pause() }
+    fun delete() = viewModelScope.launch { localAi.delete() }
+    fun verify() = viewModelScope.launch { localAi.verify() }
+    fun checkForUpdates() = viewModelScope.launch { localAi.checkForUpdates() }
 }

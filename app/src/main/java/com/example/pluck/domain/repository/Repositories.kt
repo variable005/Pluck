@@ -27,9 +27,13 @@ interface SettingsRepository {
     suspend fun saveApiKey(provider: AiProvider, key: String)
 }
 
-/** Controls Google's system-managed on-device generation feature. */
+/** Controls Pluck's private, integrity-verified Google AI Edge model installation. */
 interface LocalAiRepository {
     val modelState: Flow<LocalAiModelState>
     suspend fun refresh()
     suspend fun download()
+    suspend fun pause()
+    suspend fun delete()
+    suspend fun verify()
+    suspend fun checkForUpdates()
 }

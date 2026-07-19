@@ -72,7 +72,8 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.coil.compose)
     implementation(libs.androidx.exifinterface)
-    implementation(libs.mlkit.genai.prompt)
+    // Official Google AI Edge runtime for locally downloaded, verified LiteRT-LM models.
+    implementation(libs.google.ai.edge.litertlm)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
