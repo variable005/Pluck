@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">Pluck</string>
+    <string name="widget_brand">Pluck</string>
+    <string name="widget_capture_title">Capture next place</string>
+    <string name="widget_capture_action">Open camera</string>
+    <string name="widget_capture_content_description">Capture the next place in today’s Pluck journey</string>
+    <string name="widget_capture_description">Quickly capture the next place in today’s journey</string>
+    <string name="widget_local_ready">Local Gemma ready • offline</string>
+    <string name="widget_local_setup">Local Gemma setup needed</string>
+    <string name="widget_local_details_ready">%1$s stored · Approx. 3–6 min story</string>
+    <string name="widget_local_details_setup">2.58 GB model · Approx. 3–6 min story</string>
+    <string name="widget_battery_guidance">Best at 30 percent+ battery · cool phone if warm</string>
 </resources>

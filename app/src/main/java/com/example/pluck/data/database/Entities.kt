@@ -1,10 +1,12 @@
 package com.example.pluck.data.database
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.pluck.domain.model.AiProvider
+import com.example.pluck.domain.model.StoryMood
 
 @Entity(tableName = "journeys", indices = [Index(value = ["date"], unique = true)])
 data class JourneyEntity(
@@ -40,7 +42,8 @@ data class StoryEntity(
     val title: String,
     val content: String,
     val provider: AiProvider,
-    val createdAt: Long
+    val createdAt: Long,
+    @ColumnInfo(defaultValue = "'CINEMATIC'") val mood: StoryMood = StoryMood.CINEMATIC
 )
 
 /**
@@ -56,5 +59,6 @@ data class JourneyLibraryRow(
     val storyId: Long?,
     val storyTitle: String?,
     val storyProvider: AiProvider?,
-    val storyCreatedAt: Long?
+    val storyCreatedAt: Long?,
+    val storyMood: StoryMood?
 )

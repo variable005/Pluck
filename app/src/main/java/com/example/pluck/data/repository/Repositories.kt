@@ -18,6 +18,7 @@ import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
 import com.example.pluck.domain.model.StoryPreview
+import com.example.pluck.domain.model.StoryMood
 import com.example.pluck.domain.repository.JourneyRepository
 import com.example.pluck.domain.repository.SettingsRepository
 import com.example.pluck.domain.repository.StoryRepository
@@ -34,13 +35,13 @@ import kotlinx.coroutines.flow.map
 
 private fun JourneyEntity.toDomain() = Journey(id, date, timeZoneId)
 private fun JourneyPhotoEntity.toDomain() = JourneyPhoto(id, journeyId, imagePath, timestamp, latitude, longitude, address)
-private fun StoryEntity.toDomain() = Story(id, journeyId, title, content, provider, createdAt)
+private fun StoryEntity.toDomain() = Story(id, journeyId, title, content, provider, createdAt, mood)
 private fun JourneyLibraryRow.toDomain() = JourneyLibraryItem(
     journey = Journey(journeyId, journeyDate, journeyTimeZoneId),
     photoCount = photoCount,
     coverImagePath = coverImagePath,
     story = if (storyId != null && storyTitle != null && storyProvider != null && storyCreatedAt != null) {
-        StoryPreview(storyId, storyTitle, storyProvider, storyCreatedAt)
+        StoryPreview(storyId, storyTitle, storyProvider, storyCreatedAt, storyMood ?: StoryMood.CINEMATIC)
     } else {
         null
     }
@@ -79,7 +80,17 @@ class RoomJourneyRepository @Inject constructor(
 @Singleton
 class RoomStoryRepository @Inject constructor(private val storyDao: StoryDao) : StoryRepository {
     override fun observeLatest(journeyId: Long): Flow<Story?> = storyDao.observeLatest(journeyId).map { it?.toDomain() }
-    override suspend fun save(story: Story): Long = storyDao.insert(StoryEntity(story.id, story.journeyId, story.title, story.content, story.provider, story.createdAt))
+    override suspend fun save(story: Story): Long = storyDao.insert(
+        StoryEntity(
+            story.id,
+            story.journeyId,
+            story.title,
+            story.content,
+            story.provider,
+            story.createdAt,
+            story.mood
+        )
+    )
 }
 
 /** Stores configuration and API secrets in an Android Keystore-backed encrypted preference file. */

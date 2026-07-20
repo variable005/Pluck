@@ -15,6 +15,7 @@ import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
 import com.example.pluck.domain.model.StoryMood
+import com.example.pluck.domain.model.StoryVariation
 import com.example.pluck.domain.model.LocalAiModelState
 import com.example.pluck.domain.repository.JourneyRepository
 import com.example.pluck.domain.repository.SettingsRepository
@@ -135,10 +136,13 @@ class StoryViewModel @Inject constructor(
     private var selectedMood: StoryMood = StoryMood.CINEMATIC
     private val _generation = MutableStateFlow(StoryUiState())
     val uiState: StateFlow<StoryUiState> = combine(stories.observeLatest(journeyId), _generation) { story, generation -> generation.copy(story = story) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StoryUiState())
-    fun generate(mood: StoryMood = selectedMood) = viewModelScope.launch {
+    fun generate(
+        mood: StoryMood = selectedMood,
+        variation: StoryVariation? = null
+    ) = viewModelScope.launch {
         selectedMood = mood
         _generation.value = _generation.value.copy(generating = true, error = null)
-        runCatching { generateStory(journeyId, Locale.getDefault().displayLanguage, mood) }
+        runCatching { generateStory(journeyId, Locale.getDefault().displayLanguage, mood, variation) }
             .onSuccess { _generation.value = StoryUiState() }
             .onFailure { _generation.value = _generation.value.copy(generating = false, error = it.message ?: "Story generation failed.") }
     }

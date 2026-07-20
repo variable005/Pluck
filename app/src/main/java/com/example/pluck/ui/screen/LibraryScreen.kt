@@ -20,12 +20,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,6 +35,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +58,20 @@ import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.LibraryViewModel
 import java.io.File
 import java.text.SimpleDateFormat
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+
+private enum class LibraryGrouping(val label: String) {
+    WEEK("Week"),
+    MONTH("Month"),
+    MOOD("Mood"),
+    SEASON("Season")
+}
+
+private data class LibrarySection(val label: String, val items: List<JourneyLibraryItem>)
 
 /**
  * A local, offline library of every journey Pluck has saved on this device.
@@ -103,6 +122,8 @@ private fun JourneyLibrary(
     onOpenStory: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var grouping by rememberSaveable { mutableStateOf(LibraryGrouping.WEEK) }
+    val sections = remember(journeys, grouping) { journeys.groupedBy(grouping) }
     Box(modifier) {
         LazyColumn(
             modifier = Modifier
@@ -114,27 +135,49 @@ private fun JourneyLibrary(
         ) {
             item(key = "library_heading") {
                 Column(Modifier.padding(bottom = 8.dp)) {
-                    Text("Recent journeys", style = MaterialTheme.typography.headlineLarge)
+                    Text("Saved stories", style = MaterialTheme.typography.headlineLarge)
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "${journeys.size} ${if (journeys.size == 1) "journey" else "journeys"} saved locally",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    LazyRow(
+                        modifier = Modifier.padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(LibraryGrouping.entries, key = { it.name }) { option ->
+                            FilterChip(
+                                selected = grouping == option,
+                                onClick = { grouping = option },
+                                label = { Text(option.label) }
+                            )
+                        }
+                    }
                 }
             }
-            items(journeys, key = { it.journey.id }) { journey ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn() + slideInVertically { it / 8 }
-                ) {
-                    JourneyLibraryCard(
-                        item = journey,
-                        onOpen = {
-                            if (journey.story != null) onOpenStory(journey.journey.id)
-                            else onOpenJourney(journey.journey.id)
-                        }
+            sections.forEach { section ->
+                item(key = "section_${section.label}") {
+                    Text(
+                        section.label,
+                        modifier = Modifier.padding(top = 8.dp),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
                     )
+                }
+                items(section.items, key = { it.journey.id }) { journey ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn() + slideInVertically { it / 8 }
+                    ) {
+                        JourneyLibraryCard(
+                            item = journey,
+                            onOpen = {
+                                if (journey.story != null) onOpenStory(journey.journey.id)
+                                else onOpenJourney(journey.journey.id)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -184,6 +227,7 @@ private fun JourneyLibraryCard(item: JourneyLibraryItem, onOpen: () -> Unit) {
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    StatusPill(story.mood.displayName)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -201,6 +245,39 @@ private fun JourneyLibraryCard(item: JourneyLibraryItem, onOpen: () -> Unit) {
             }
         }
     }
+}
+
+private fun List<JourneyLibraryItem>.groupedBy(grouping: LibraryGrouping): List<LibrarySection> =
+    groupBy { item ->
+        when (grouping) {
+            LibraryGrouping.WEEK -> item.journey.date.weekLabel()
+            LibraryGrouping.MONTH -> item.journey.date.monthLabel()
+            LibraryGrouping.MOOD -> item.story?.mood?.displayName ?: "Waiting for a story"
+            LibraryGrouping.SEASON -> item.journey.date.seasonLabel()
+        }
+    }.map { (label, items) -> LibrarySection(label, items) }
+
+private fun String.asLocalDate(): LocalDate? = runCatching { LocalDate.parse(this) }.getOrNull()
+
+private fun String.weekLabel(): String {
+    val date = asLocalDate() ?: return this
+    val weekStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    return "Week of ${weekStart.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))}"
+}
+
+private fun String.monthLabel(): String = asLocalDate()
+    ?.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+    ?: this
+
+private fun String.seasonLabel(): String {
+    val date = asLocalDate() ?: return this
+    val season = when (date.monthValue) {
+        12, 1, 2 -> "Winter"
+        3, 4, 5 -> "Spring"
+        6, 7, 8 -> "Summer"
+        else -> "Autumn"
+    }
+    return "$season ${date.year}"
 }
 
 @Composable

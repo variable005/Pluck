@@ -13,6 +13,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,15 +43,17 @@ import com.example.pluck.ui.screen.StoryScreen
 import com.example.pluck.ui.screen.TimelineScreen
 import com.example.pluck.viewmodel.HomeViewModel
 import com.example.pluck.viewmodel.HapticSettingsViewModel
+import com.example.pluck.widget.WidgetCaptureViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
 
 private const val JOURNEY_ID = "journeyId"
 
 @Composable
-fun PluckNavHost() {
+fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
     val navController = rememberNavController()
     val hapticSettings: HapticSettingsViewModel = hiltViewModel()
+    val widgetCapture: WidgetCaptureViewModel = hiltViewModel()
     val hapticMode by hapticSettings.mode.collectAsState()
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route.orEmpty()
@@ -59,7 +65,44 @@ fun PluckNavHost() {
     }
     val barVisible = route !in setOf("onboarding", "capture/{$JOURNEY_ID}", "story/{$JOURNEY_ID}")
     val floatingBarState = remember { FloatingBarState() }
+    var onboardingResolved by rememberSaveable { mutableStateOf(false) }
+    var pendingCaptureRequest by rememberSaveable { mutableLongStateOf(0L) }
+    var handledCaptureRequest by rememberSaveable { mutableLongStateOf(0L) }
+
     LaunchedEffect(route) { floatingBarState.visible = barVisible }
+    LaunchedEffect(route) {
+        // Restored tasks do not revisit the onboarding composable, so treat any other route as
+        // resolved before honoring an external widget request.
+        if (route != "onboarding") onboardingResolved = true
+    }
+    LaunchedEffect(widgetCaptureRequest) {
+        if (widgetCaptureRequest != 0L && widgetCaptureRequest != handledCaptureRequest) {
+            pendingCaptureRequest = widgetCaptureRequest
+        }
+    }
+    LaunchedEffect(pendingCaptureRequest, onboardingResolved, route) {
+        if (pendingCaptureRequest == 0L || !onboardingResolved) return@LaunchedEffect
+
+        if (route != "home") {
+            // Build a predictable back stack: Home -> today's timeline -> CameraX capture.
+            navController.navigate("home") {
+                popUpTo("home") { inclusive = false; saveState = false }
+                launchSingleTop = true
+            }
+            return@LaunchedEffect
+        }
+
+        val request = pendingCaptureRequest
+        pendingCaptureRequest = 0L
+        handledCaptureRequest = request
+        widgetCapture.openCapture { journeyId ->
+            navController.navigate("timeline/$journeyId") {
+                popUpTo("home") { inclusive = false; saveState = false }
+                launchSingleTop = true
+            }
+            navController.navigate("capture/$journeyId") { launchSingleTop = true }
+        }
+    }
     CompositionLocalProvider(
         LocalFloatingBarState provides floatingBarState,
         LocalHapticMode provides hapticMode
@@ -91,6 +134,7 @@ fun PluckNavHost() {
             composable("onboarding") {
                 OnboardingScreen(
                     onFinished = {
+                        onboardingResolved = true
                         navController.navigate("home") {
                             popUpTo("onboarding") { inclusive = true }
                             launchSingleTop = true

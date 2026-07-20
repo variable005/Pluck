@@ -36,6 +36,7 @@ private class ProviderHttpException(val code: Int, message: String) : IOExceptio
 private fun storyPrompt(input: StoryGenerationInput): String = buildString {
     append("You are Pluck's invisible fiction writer. The attached images are an ordered journey. Analyze EVERY image and its accompanying metadata. Create one continuous fictional narrative inspired by the places, not a diary, journal, travelogue, or image-by-image description. Each place must matter naturally to the plot. Keep characters, stakes, chronology, and details consistent. Never present uncertain location or identity guesses as facts. Write 700 to 1200 words in ${input.locale}. ")
     append("Narrative mood: ${input.mood.promptDirection}. Let this guide the voice, imagery, pacing, and atmosphere while keeping the story cohesive. ")
+    input.variation?.let { append("Revision direction: ${it.promptDirection} ") }
     input.genre?.let { append("Genre: $it. ") }
     append("Return exactly this format: TITLE: a compelling title, followed by a newline and STORY: followed by the narrative.")
     input.photos.forEachIndexed { index, photo ->

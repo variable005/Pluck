@@ -34,6 +34,13 @@ enum class StoryMood(
     DARK("Dark", "atmospheric, tense, and shadowed without graphic content")
 }
 
+/** A one-tap revision direction; Pluck never exposes an AI chat surface. */
+enum class StoryVariation(val promptDirection: String) {
+    MORE_MYSTERIOUS("Make the story more mysterious, with stronger intrigue and carefully placed reveals."),
+    SHORTER("Keep the same coherent premise but write a tighter version of approximately 450 to 650 words."),
+    MORE_EMOTIONAL("Strengthen the characters' emotional stakes and intimate moments without becoming melodramatic.")
+}
+
 data class Journey(val id: Long, val date: String, val timeZoneId: String)
 
 data class JourneyPhoto(
@@ -52,7 +59,8 @@ data class Story(
     val title: String,
     val content: String,
     val provider: AiProvider,
-    val createdAt: Long
+    val createdAt: Long,
+    val mood: StoryMood = StoryMood.CINEMATIC
 )
 
 /**
@@ -65,7 +73,8 @@ data class StoryPreview(
     val id: Long,
     val title: String,
     val provider: AiProvider,
-    val createdAt: Long
+    val createdAt: Long,
+    val mood: StoryMood = StoryMood.CINEMATIC
 )
 
 /** A journey with the summary data needed to render it in the user's library. */
@@ -80,6 +89,7 @@ data class StoryGenerationInput(
     val photos: List<JourneyPhoto>,
     val locale: String,
     val mood: StoryMood = StoryMood.CINEMATIC,
+    val variation: StoryVariation? = null,
     val genre: String? = null
 )
 

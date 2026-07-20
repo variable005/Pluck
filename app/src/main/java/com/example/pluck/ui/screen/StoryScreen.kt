@@ -1,6 +1,7 @@
 package com.example.pluck.ui.screen
 
 import android.content.Intent
+import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -34,8 +35,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AutoStories
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.Refresh
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -77,7 +79,10 @@ import com.example.pluck.ui.components.PluckHapticEvent
 import com.example.pluck.ui.components.PluckTopAppBar
 import com.example.pluck.ui.components.rememberPluckHaptics
 import com.example.pluck.domain.model.StoryMood
+import com.example.pluck.domain.model.StoryVariation
+import com.example.pluck.ui.story.StoryShareRenderer
 import com.example.pluck.viewmodel.StoryViewModel
+import java.util.Date
 import kotlin.math.ceil
 
 private val ReaderMaxWidth = 720.dp
@@ -94,6 +99,7 @@ fun StoryScreen(onBack: () -> Unit, viewModel: StoryViewModel = hiltViewModel())
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val haptics = rememberPluckHaptics()
+    var showShareOptions by rememberSaveable { mutableStateOf(false) }
     val saveStory = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         val story = state.story ?: return@rememberLauncherForActivityResult
         if (uri != null) {
@@ -111,24 +117,18 @@ fun StoryScreen(onBack: () -> Unit, viewModel: StoryViewModel = hiltViewModel())
             title = story.title,
             content = story.content,
             provider = story.provider.displayName,
+            mood = story.mood,
+            createdAt = story.createdAt,
             isRefreshing = state.generating,
             generationError = state.error,
             onBack = onBack,
-            onRefresh = {
+            onRefresh = { mood, variation ->
                 haptics.perform(PluckHapticEvent.PrimaryAction)
-                viewModel.generate()
+                viewModel.generate(mood, variation)
             },
             onShare = {
                 haptics.perform(PluckHapticEvent.PrimaryAction)
-                context.startActivity(
-                    Intent.createChooser(
-                        Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "${story.title}\n\n${story.content}")
-                        },
-                        "Share story"
-                    )
-                )
+                showShareOptions = true
             },
             onSave = {
                 haptics.perform(PluckHapticEvent.PrimaryAction)
@@ -143,6 +143,72 @@ fun StoryScreen(onBack: () -> Unit, viewModel: StoryViewModel = hiltViewModel())
             // AnimatedPrimaryButton provides the primary-action haptic itself.
             onGenerate = viewModel::generate,
             error = state.error
+        )
+    }
+
+    if (showShareOptions && story != null) {
+        StoryShareDialog(
+            onDismiss = { showShareOptions = false },
+            onShareText = {
+                context.startActivity(
+                    Intent.createChooser(
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "${story.title}\n\n${story.content}")
+                        },
+                        "Share story"
+                    )
+                )
+                showShareOptions = false
+            },
+            onShareQuote = {
+                runCatching {
+                    context.startActivity(
+                        StoryShareRenderer.quoteIntent(
+                            context,
+                            story.title,
+                            story.content,
+                            story.mood,
+                            story.createdAt
+                        )
+                    )
+                }.onFailure {
+                    context.startActivity(
+                        Intent.createChooser(
+                            Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "${story.title}\n\n${story.content}")
+                            },
+                            "Share story"
+                        )
+                    )
+                }
+                showShareOptions = false
+            },
+            onShareCards = {
+                runCatching {
+                    context.startActivity(
+                        StoryShareRenderer.carouselIntent(
+                            context,
+                            story.title,
+                            story.content,
+                            story.mood,
+                            story.createdAt
+                        )
+                    )
+                }.onFailure {
+                    context.startActivity(
+                        Intent.createChooser(
+                            Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "${story.title}\n\n${story.content}")
+                            },
+                            "Share story"
+                        )
+                    )
+                }
+                showShareOptions = false
+            }
         )
     }
 }
@@ -332,14 +398,103 @@ private fun MoodPicker(
 }
 
 @Composable
+private fun StoryVariationDialog(
+    currentMood: StoryMood,
+    onDismiss: () -> Unit,
+    onGenerate: (StoryMood, StoryVariation?) -> Unit
+) {
+    var selectedMood by rememberSaveable { mutableStateOf(currentMood) }
+    var choosingMood by rememberSaveable { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Create another version") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Choose one direction. Pluck creates a fresh story from the same journey—there is no chat to manage.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                androidx.compose.material3.TextButton(
+                    onClick = { onGenerate(StoryMood.MYSTERIOUS, StoryVariation.MORE_MYSTERIOUS) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Make it more mysterious") }
+                androidx.compose.material3.TextButton(
+                    onClick = { onGenerate(currentMood, StoryVariation.SHORTER) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Make it shorter") }
+                androidx.compose.material3.TextButton(
+                    onClick = { onGenerate(currentMood, StoryVariation.MORE_EMOTIONAL) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Make it more emotional") }
+                androidx.compose.material3.TextButton(
+                    onClick = { choosingMood = !choosingMood },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Change mood") }
+                AnimatedVisibility(choosingMood) {
+                    Column(modifier = Modifier.padding(top = 8.dp)) {
+                        MoodPicker(selectedMood, onSelect = { selectedMood = it })
+                        Button(
+                            onClick = { onGenerate(selectedMood, null) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp)
+                        ) { Text("Create ${selectedMood.displayName.lowercase()} version") }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun StoryShareDialog(
+    onDismiss: () -> Unit,
+    onShareText: () -> Unit,
+    onShareQuote: () -> Unit,
+    onShareCards: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Share your story") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Choose a private share format. Cards are created on this device from your saved story—no image generation is used.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                androidx.compose.material3.TextButton(onClick = onShareText, modifier = Modifier.fillMaxWidth()) {
+                    Text("Share story text")
+                }
+                androidx.compose.material3.TextButton(onClick = onShareQuote, modifier = Modifier.fillMaxWidth()) {
+                    Text("Share quote card")
+                }
+                androidx.compose.material3.TextButton(onClick = onShareCards, modifier = Modifier.fillMaxWidth()) {
+                    Text("Share story card carousel")
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
 private fun StoryReader(
     title: String,
     content: String,
     provider: String,
+    mood: StoryMood,
+    createdAt: Long,
     isRefreshing: Boolean,
     generationError: String?,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
+    onRefresh: (StoryMood, StoryVariation?) -> Unit,
     onShare: () -> Unit,
     onSave: () -> Unit
 ) {
@@ -359,6 +514,7 @@ private fun StoryReader(
     val paragraphs = remember(content) { content.storyParagraphs() }
     val compactActions by remember { derivedStateOf { scroll.value > 84 } }
     var revealed by rememberSaveable(title) { mutableStateOf(false) }
+    var showVariationOptions by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(title) { revealed = true }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -376,10 +532,12 @@ private fun StoryReader(
                     visible = revealed,
                     enter = fadeIn(tween(500)) + slideInVertically(animationSpec = tween(500, easing = FastOutSlowInEasing)) { it / 12 }
                 ) {
-                    StoryHero(
-                        title = title,
-                        provider = provider,
-                        readingMinutes = readingMinutes,
+                            StoryHero(
+                                title = title,
+                                provider = provider,
+                                mood = mood,
+                                createdAt = createdAt,
+                                readingMinutes = readingMinutes,
                         modifier = Modifier
                             .widthIn(max = ReaderMaxWidth)
                             .fillMaxWidth()
@@ -433,7 +591,7 @@ private fun StoryReader(
         StoryActionDock(
             compact = compactActions,
             refreshing = isRefreshing,
-            onRefresh = onRefresh,
+            onRefresh = { showVariationOptions = true },
             onShare = onShare,
             onSave = onSave,
             modifier = Modifier
@@ -441,6 +599,17 @@ private fun StoryReader(
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         )
+
+        if (showVariationOptions) {
+            StoryVariationDialog(
+                currentMood = mood,
+                onDismiss = { showVariationOptions = false },
+                onGenerate = { selectedMood, variation ->
+                    showVariationOptions = false
+                    onRefresh(selectedMood, variation)
+                }
+            )
+        }
     }
 }
 
@@ -467,7 +636,7 @@ private fun FloatingReaderHeader(progress: Float, onBack: () -> Unit, modifier: 
                 haptics.perform(PluckHapticEvent.Navigation)
                 onBack()
             }) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Navigate back")
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Navigate back")
             }
         }
         Surface(
@@ -508,11 +677,20 @@ private fun FloatingReaderHeader(progress: Float, onBack: () -> Unit, modifier: 
 }
 
 @Composable
-private fun StoryHero(title: String, provider: String, readingMinutes: Int, modifier: Modifier = Modifier) {
+private fun StoryHero(
+    title: String,
+    provider: String,
+    mood: StoryMood,
+    createdAt: Long,
+    readingMinutes: Int,
+    modifier: Modifier = Modifier
+) {
+    val palette = mood.readerPalette()
+    val coverDate = DateFormat.getMediumDateFormat(LocalContext.current).format(Date(createdAt))
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = palette.container,
         tonalElevation = 1.dp
     ) {
         Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
@@ -520,37 +698,37 @@ private fun StoryHero(title: String, provider: String, readingMinutes: Int, modi
                 Surface(
                     modifier = Modifier.size(40.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.11f)
+                    color = palette.content.copy(alpha = 0.11f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Rounded.AutoStories,
                             contentDescription = null,
                             modifier = Modifier.size(21.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            tint = palette.content
                         )
                     }
                 }
                 Text(
-                    text = "A PLUCK ORIGINAL",
+                    text = "${mood.displayName.uppercase()} EDITION",
                     modifier = Modifier.padding(start = 12.dp),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    color = palette.content.copy(alpha = 0.8f)
                 )
             }
             Text(
                 text = title,
                 modifier = Modifier.padding(top = 22.dp),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                style = mood.coverTitleStyle(),
+                color = palette.content,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "A fictional tale, shaped by the places you chose today.",
+                text = "A fictional tale, shaped by the places you chose on $coverDate.",
                 modifier = Modifier.padding(top = 12.dp),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f)
+                color = palette.content.copy(alpha = 0.82f)
             )
             Row(
                 modifier = Modifier.padding(top = 22.dp),
@@ -560,12 +738,14 @@ private fun StoryHero(title: String, provider: String, readingMinutes: Int, modi
                 StoryMetaPill(
                     icon = Icons.Rounded.Schedule,
                     text = "$readingMinutes min read",
-                    contentDescription = "$readingMinutes minute reading time"
+                    contentDescription = "$readingMinutes minute reading time",
+                    contentColor = palette.content
                 )
                 StoryMetaPill(
                     icon = Icons.Rounded.AutoStories,
                     text = provider,
-                    contentDescription = "Generated with $provider"
+                    contentDescription = "Generated with $provider",
+                    contentColor = palette.content
                 )
             }
         }
@@ -576,11 +756,12 @@ private fun StoryHero(title: String, provider: String, readingMinutes: Int, modi
 private fun StoryMetaPill(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
-    contentDescription: String
+    contentDescription: String,
+    contentColor: androidx.compose.ui.graphics.Color
 ) {
     Surface(
         shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.1f),
+        color = contentColor.copy(alpha = 0.1f),
         modifier = Modifier.semantics { this.contentDescription = contentDescription }
     ) {
         Row(
@@ -591,13 +772,13 @@ private fun StoryMetaPill(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(15.dp),
-                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                tint = contentColor
             )
             Text(
                 text = text,
                 modifier = Modifier.padding(start = 6.dp),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                color = contentColor
             )
         }
     }
@@ -787,6 +968,42 @@ private fun ReaderIconAction(
     ) {
         Icon(imageVector = icon, contentDescription = null)
     }
+}
+
+private data class StoryReaderPalette(
+    val container: androidx.compose.ui.graphics.Color,
+    val content: androidx.compose.ui.graphics.Color
+)
+
+@Composable
+private fun StoryMood.readerPalette(): StoryReaderPalette = when (this) {
+    StoryMood.CINEMATIC -> StoryReaderPalette(
+        MaterialTheme.colorScheme.secondaryContainer,
+        MaterialTheme.colorScheme.onSecondaryContainer
+    )
+    StoryMood.MYSTERIOUS, StoryMood.DARK -> StoryReaderPalette(
+        MaterialTheme.colorScheme.tertiaryContainer,
+        MaterialTheme.colorScheme.onTertiaryContainer
+    )
+    StoryMood.WHIMSICAL -> StoryReaderPalette(
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.onPrimaryContainer
+    )
+    StoryMood.WARM -> StoryReaderPalette(
+        MaterialTheme.colorScheme.surfaceContainerHighest,
+        MaterialTheme.colorScheme.onSurface
+    )
+    StoryMood.ADVENTUROUS -> StoryReaderPalette(
+        MaterialTheme.colorScheme.secondaryContainer,
+        MaterialTheme.colorScheme.onSecondaryContainer
+    )
+}
+
+@Composable
+private fun StoryMood.coverTitleStyle() = when (this) {
+    StoryMood.MYSTERIOUS, StoryMood.DARK -> MaterialTheme.typography.displaySmall.copy(letterSpacing = 0.45.sp)
+    StoryMood.WHIMSICAL -> MaterialTheme.typography.displaySmall.copy(letterSpacing = 0.1.sp)
+    else -> MaterialTheme.typography.displaySmall
 }
 
 private fun String.storyParagraphs(): List<String> =

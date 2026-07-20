@@ -59,7 +59,7 @@ import kotlin.coroutines.resumeWithException
  * deliberately compiled into the signed app: changing a URL in preferences or
  * supplying a model file is not possible.
  */
-private object OfficialGemma4E2B {
+internal object OfficialGemma4E2B {
     const val name = "Gemma 4 E2B Instruct"
     const val publisher = "Google AI Edge · LiteRT Community"
     const val repository = "litert-community/gemma-4-E2B-it-litert-lm"
@@ -70,6 +70,33 @@ private object OfficialGemma4E2B {
     const val requiredStorageBytes = 4_500_000_000L
     const val downloadUrl = "https://huggingface.co/$repository/resolve/$revision/$fileName"
     const val updateMetadataUrl = "https://huggingface.co/api/models/$repository"
+}
+
+/**
+ * A deliberately lightweight, read-only status lookup for Pluck's home-screen widget.
+ *
+ * It checks only the app-private verification marker written by [LiteRtModelManager], so the
+ * launcher never receives a model path, prompt, image, or story. Full checksum verification
+ * remains the responsibility of the model manager before inference begins.
+ */
+data class LocalGemmaWidgetSnapshot(
+    val isReady: Boolean,
+    val installedBytes: Long
+)
+
+object LocalGemmaWidgetStatus {
+    fun snapshot(context: Context): LocalGemmaWidgetSnapshot {
+        val root = File(context.noBackupFilesDir, "local_ai_models")
+        val model = File(root, OfficialGemma4E2B.fileName)
+        val marker = File(root, "${OfficialGemma4E2B.fileName}.verified")
+        val isReady = model.isFile && marker.isFile && runCatching {
+            marker.readText().trim() == OfficialGemma4E2B.sha256
+        }.getOrDefault(false)
+        return LocalGemmaWidgetSnapshot(
+            isReady = isReady,
+            installedBytes = if (isReady) model.length() else 0L
+        )
+    }
 }
 
 /**
@@ -524,6 +551,7 @@ private suspend fun streamResponse(conversation: Conversation, contents: Content
 private fun localStoryPrompt(input: StoryGenerationInput): String = buildString {
     append("The attached images are one ordered journey. Write approximately 700 to 1200 words of original fiction inspired by every place. Never write a diary, travelogue, summary, or image-by-image description. Make every place matter naturally to one continuous plot. Keep characters, chronology, cause and effect, and setting details consistent. Return exactly: TITLE: <title> then STORY: <narrative>.")
     append(" Narrative mood: ${input.mood.promptDirection}. Use it to guide the voice, pacing, and imagery.")
+    input.variation?.let { append(" Revision direction: ${it.promptDirection}") }
     input.genre?.let { append(" Genre: $it.") }
     input.photos.forEachIndexed { index, photo -> append("\nScene ${index + 1}: captured at ${photo.timestamp}; place hint: ${photo.address ?: "not supplied"}; coordinates: ${photo.latitude ?: "unknown"}, ${photo.longitude ?: "unknown"}.") }
 }

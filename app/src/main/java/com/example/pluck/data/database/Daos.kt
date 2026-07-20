@@ -29,7 +29,8 @@ interface JourneyDao {
             stories.id AS storyId,
             stories.title AS storyTitle,
             stories.provider AS storyProvider,
-            stories.createdAt AS storyCreatedAt
+            stories.createdAt AS storyCreatedAt,
+            stories.mood AS storyMood
         FROM journeys
         LEFT JOIN journey_photos ON journey_photos.journeyId = journeys.id
         LEFT JOIN stories ON stories.id = (

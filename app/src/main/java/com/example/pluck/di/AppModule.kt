@@ -43,7 +43,10 @@ abstract class RepositoryModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-    @Provides @Singleton fun provideDatabase(@ApplicationContext context: Context): PluckDatabase = Room.databaseBuilder(context, PluckDatabase::class.java, "pluck.db").build()
+    @Provides @Singleton fun provideDatabase(@ApplicationContext context: Context): PluckDatabase =
+        Room.databaseBuilder(context, PluckDatabase::class.java, "pluck.db")
+            .addMigrations(PluckDatabase.MIGRATION_1_2)
+            .build()
     @Provides fun provideJourneyDao(database: PluckDatabase) = database.journeyDao()
     @Provides fun providePhotoDao(database: PluckDatabase) = database.journeyPhotoDao()
     @Provides fun provideStoryDao(database: PluckDatabase) = database.storyDao()

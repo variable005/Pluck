@@ -1,20 +1,25 @@
 package com.example.pluck.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BatteryFull
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -22,9 +27,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.pluck.domain.model.LocalAiInstallStatus
@@ -41,12 +49,17 @@ import com.example.pluck.ui.components.ExpressiveCard
 import com.example.pluck.ui.components.PluckTopAppBar
 import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.LocalAiViewModel
+import com.example.pluck.widget.CaptureNextPlaceWidgetProvider
 
 @Composable
 fun LocalAiScreen(onBack: () -> Unit, viewModel: LocalAiViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     var showConsent by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
+    LaunchedEffect(state.status, state.verified) {
+        CaptureNextPlaceWidgetProvider.refreshInstalledWidgets(context)
+    }
     Column(Modifier.fillMaxSize()) {
         PluckTopAppBar("Local AI", "Private Gemma stories on this phone", onBack)
         Column(
@@ -54,6 +67,7 @@ fun LocalAiScreen(onBack: () -> Unit, viewModel: LocalAiViewModel = hiltViewMode
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             LocalHero()
+            LocalReadinessCard(state)
             ModelCard(
                 state = state,
                 onDownload = { showConsent = true },
@@ -63,6 +77,8 @@ fun LocalAiScreen(onBack: () -> Unit, viewModel: LocalAiViewModel = hiltViewMode
                 onRefresh = viewModel::refresh,
                 onCheckUpdates = viewModel::checkForUpdates
             )
+            GalaxyS23EstimateCard(state)
+            BatteryAndThermalGuidanceCard(state)
             SecurityCard()
             Text(
                 "LiteRT-LM runs the verified model entirely on-device. After installation, Pluck never needs the internet to analyze journey photos or write stories.",
@@ -87,6 +103,68 @@ private fun LocalHero() {
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LocalReadinessCard(state: LocalAiModelState) {
+    val offlineReady = state.isOfflineReady()
+    val icon = when (state.status) {
+        LocalAiInstallStatus.INSTALLED -> Icons.Rounded.VerifiedUser
+        LocalAiInstallStatus.DOWNLOADING, LocalAiInstallStatus.PAUSED, LocalAiInstallStatus.VERIFYING -> Icons.Rounded.Download
+        else -> Icons.Rounded.CloudOff
+    }
+    val title = when {
+        offlineReady -> "Ready for offline stories"
+        state.status == LocalAiInstallStatus.DOWNLOADING -> "Preparing Local Gemma"
+        state.status == LocalAiInstallStatus.VERIFYING -> "Checking your model"
+        state.status == LocalAiInstallStatus.PAUSED -> "Download is paused"
+        else -> "Local stories need a model"
+    }
+    val body = when {
+        offlineReady -> "Local Gemma is verified. You can disconnect from the internet and keep creating stories privately."
+        state.status == LocalAiInstallStatus.DOWNLOADING -> "The model is downloading securely. Local stories will be ready as soon as integrity verification completes."
+        state.status == LocalAiInstallStatus.VERIFYING -> "Pluck is checking the download before it can ever be used."
+        state.status == LocalAiInstallStatus.PAUSED -> "Resume the secure download whenever you have a reliable connection and enough free storage."
+        else -> "Download and verify Gemma once to make story generation available without a connection."
+    }
+
+    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = CircleShape,
+                    color = if (offlineReady) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = if (offlineReady) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                    Text("Local Gemma readiness", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(title, style = MaterialTheme.typography.titleLarge)
+                }
+            }
+            StatusPill(
+                text = if (offlineReady) "Offline ready" else statusLabel(state),
+                active = offlineReady
+            )
+            Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider()
+            ReadinessDetail(
+                label = "Model integrity",
+                value = if (state.verified) "Verified" else "Not verified"
+            )
+            ReadinessDetail(
+                label = "Connection after setup",
+                value = if (offlineReady) "Not required" else "Required once"
             )
         }
     }
@@ -137,18 +215,139 @@ private fun ModelCard(
 
 @Composable
 private fun StorageDetails(state: LocalAiModelState) {
-    HorizontalDivider()
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Model download", style = MaterialTheme.typography.bodyMedium)
-        Text(formatBytes(state.totalBytes), style = MaterialTheme.typography.labelLarge)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        HorizontalDivider()
+        Text("On-device storage", style = MaterialTheme.typography.titleMedium)
+        ReadinessDetail(
+            label = "Installed model",
+            value = state.downloadedBytes.takeIf { it > 0 }?.let(::formatBytes) ?: "Not installed"
+        )
+        ReadinessDetail(label = "Download size", value = formatBytes(state.totalBytes))
+        ReadinessDetail(label = "Space needed to install", value = formatBytes(state.requiredStorageBytes))
+        ReadinessDetail(label = "Free on this device", value = formatBytes(state.availableStorageBytes))
+        Text(
+            "The model and its runtime cache remain in Pluck's private app storage.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Required free storage", style = MaterialTheme.typography.bodyMedium)
-        Text(formatBytes(state.requiredStorageBytes), style = MaterialTheme.typography.labelLarge)
+}
+
+@Composable
+private fun GalaxyS23EstimateCard(state: LocalAiModelState) {
+    val offlineReady = state.isOfflineReady()
+    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+                Column(Modifier.padding(start = 12.dp)) {
+                    Text("Galaxy S23 estimate", style = MaterialTheme.typography.titleMedium)
+                    Text("A useful expectation, not a countdown", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                EstimateMetric(
+                    label = "Typical journey",
+                    value = "4 places",
+                    modifier = Modifier.weight(1f)
+                )
+                EstimateMetric(
+                    label = "Story time",
+                    value = "3–6 min",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Text(
+                if (offlineReady) {
+                    "For a 700–1,200 word story, expect roughly 3–6 minutes after you tap Generate. More photos, a warm phone, and longer output can take longer."
+                } else {
+                    "After the model is verified, a typical 4-place, 700–1,200 word story usually takes about 3–6 minutes on a Galaxy S23."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Available now", style = MaterialTheme.typography.bodyMedium)
-        Text(formatBytes(state.availableStorageBytes), style = MaterialTheme.typography.labelLarge)
+}
+
+@Composable
+private fun EstimateMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(value, style = MaterialTheme.typography.titleLarge)
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun BatteryAndThermalGuidanceCard(state: LocalAiModelState) {
+    val offlineReady = state.isOfflineReady()
+    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.tertiaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.BatteryFull, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
+                }
+                Column(Modifier.padding(start = 12.dp)) {
+                    Text("Battery & warmth", style = MaterialTheme.typography.titleMedium)
+                    Text("A few habits keep local writing comfortable", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            GuidanceDetail(
+                title = "Start with charge",
+                body = "Use 30% battery or more. For longer stories, connecting power is the most reliable option."
+            )
+            GuidanceDetail(
+                title = "Give a warm phone a break",
+                body = "If your Galaxy S23 feels hot, let it cool before generating. Android can temporarily reduce speed when the device is warm."
+            )
+            GuidanceDetail(
+                title = "Keep this screen simple",
+                body = "For the most predictable result, avoid recording video or playing demanding games while Pluck writes."
+            )
+            if (!offlineReady) {
+                Text(
+                    "These suggestions apply once Local Gemma has finished verification.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GuidanceDetail(title: String, body: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.labelLarge)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ReadinessDetail(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -209,6 +408,9 @@ private fun statusLabel(state: LocalAiModelState): String = when (state.status) 
     LocalAiInstallStatus.CORRUPTED -> "Invalid download removed"
     LocalAiInstallStatus.FAILED -> "Needs attention"
 }
+
+private fun LocalAiModelState.isOfflineReady(): Boolean =
+    status == LocalAiInstallStatus.INSTALLED && verified
 
 private fun formatBytes(value: Long): String = when {
     value <= 0 -> "Calculating"
