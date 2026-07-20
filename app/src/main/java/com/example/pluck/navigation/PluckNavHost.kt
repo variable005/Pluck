@@ -46,6 +46,8 @@ import com.example.pluck.ui.screen.LocalAiScreen
 import com.example.pluck.ui.screen.OnboardingScreen
 import com.example.pluck.ui.screen.StoryScreen
 import com.example.pluck.ui.screen.TimelineScreen
+import com.example.pluck.ui.screen.NovellaComposerScreen
+import com.example.pluck.ui.screen.NovellaScreen
 import com.example.pluck.viewmodel.HomeViewModel
 import com.example.pluck.viewmodel.HapticSettingsViewModel
 import com.example.pluck.widget.WidgetCaptureViewModel
@@ -53,6 +55,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
 
 private const val JOURNEY_ID = "journeyId"
+private const val ARC_ID = "arcId"
 
 @Composable
 fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
@@ -63,14 +66,15 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route.orEmpty()
     val selected = when {
-        route.startsWith("library") -> MainDestination.LIBRARY
+        route.startsWith("library") || route.startsWith("novella") -> MainDestination.LIBRARY
         route.startsWith("timeline") || route == "journey" -> MainDestination.JOURNEY
         route == "settings" || route == "local-ai" -> MainDestination.SETTINGS
         else -> MainDestination.HOME
     }
     val barVisible = route.isNotBlank() &&
         route !in setOf("onboarding", "capture/{$JOURNEY_ID}", "story/{$JOURNEY_ID}", "local-ai") &&
-        !route.startsWith("library/timeline/")
+        !route.startsWith("library/timeline/") &&
+        !route.startsWith("novella/")
     val floatingBarState = remember { FloatingBarState() }
     val systemBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // The short navigation bar itself is 64dp; this reserves its visual height, breathing room,
@@ -167,7 +171,9 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
                             launchSingleTop = true
                             popUpTo("home") { saveState = true }
                         }
-                    }
+                    },
+                    onCreateNovella = { navController.navigate("novella/create") },
+                    onOpenNovella = { arcId -> navController.navigate("novella/$arcId") }
                 )
             }
             composable("timeline/{$JOURNEY_ID}", arguments = listOf(navArgument(JOURNEY_ID) { type = NavType.LongType })) {
@@ -186,6 +192,23 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
             }
             composable("story/{$JOURNEY_ID}", arguments = listOf(navArgument(JOURNEY_ID) { type = NavType.LongType })) {
                 StoryScreen(onBack = { navController.popBackStack() })
+            }
+            composable("novella/create") {
+                NovellaComposerScreen(
+                    onBack = { navController.popBackStack() },
+                    onCreated = { arcId ->
+                        navController.navigate("novella/$arcId") {
+                            popUpTo("novella/create") { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable("novella/{$ARC_ID}", arguments = listOf(navArgument(ARC_ID) { type = NavType.LongType })) {
+                NovellaScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenJourney = { journeyId -> navController.navigate("library/timeline/$journeyId") },
+                    onOpenStory = { journeyId -> navController.navigate("story/$journeyId") }
+                )
             }
             composable("settings") { SettingsScreen(onBack = { navController.navigate("home") { launchSingleTop = true } }, onLocalAi = { navController.navigate("local-ai") }) }
             composable("local-ai") { LocalAiScreen(onBack = { navController.popBackStack() }) }

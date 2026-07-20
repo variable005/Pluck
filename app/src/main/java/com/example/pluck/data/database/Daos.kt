@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -30,7 +31,8 @@ interface JourneyDao {
             stories.title AS storyTitle,
             stories.provider AS storyProvider,
             stories.createdAt AS storyCreatedAt,
-            stories.mood AS storyMood
+            stories.mood AS storyMood,
+            stories.genre AS storyGenre
         FROM journeys
         LEFT JOIN journey_photos ON journey_photos.journeyId = journeys.id
         LEFT JOIN stories ON stories.id = (
@@ -45,12 +47,15 @@ interface JourneyDao {
         """
     )
     fun observeLibrary(): Flow<List<JourneyLibraryRow>>
+    @Query("SELECT * FROM journeys WHERE date LIKE :monthPrefix || '%' ORDER BY date ASC, createdAt ASC")
+    suspend fun journeysForMonth(monthPrefix: String): List<JourneyEntity>
     @Insert(onConflict = OnConflictStrategy.ABORT) suspend fun insert(journey: JourneyEntity): Long
 }
 
 @Dao
 interface JourneyPhotoDao {
     @Query("SELECT * FROM journey_photos WHERE journeyId = :journeyId ORDER BY timestamp ASC") fun observeForJourney(journeyId: Long): Flow<List<JourneyPhotoEntity>>
+    @Query("SELECT * FROM journey_photos WHERE journeyId = :journeyId ORDER BY timestamp ASC, id ASC") suspend fun forJourney(journeyId: Long): List<JourneyPhotoEntity>
     @Insert suspend fun insert(photo: JourneyPhotoEntity): Long
     @Delete suspend fun delete(photo: JourneyPhotoEntity)
 }
@@ -58,5 +63,44 @@ interface JourneyPhotoDao {
 @Dao
 interface StoryDao {
     @Query("SELECT * FROM stories WHERE journeyId = :journeyId ORDER BY createdAt DESC LIMIT 1") fun observeLatest(journeyId: Long): Flow<StoryEntity?>
+    @Transaction
+    @Query("SELECT * FROM stories WHERE journeyId = :journeyId ORDER BY createdAt DESC, id DESC LIMIT 1")
+    fun observeLatestWithScenes(journeyId: Long): Flow<StoryWithScenesEntity?>
+    @Query("SELECT * FROM stories WHERE journeyId = :journeyId ORDER BY createdAt DESC, id DESC LIMIT 1")
+    suspend fun latestForJourney(journeyId: Long): StoryEntity?
     @Insert suspend fun insert(story: StoryEntity): Long
+    @Insert suspend fun insertScenes(scenes: List<StorySceneEntity>)
+
+    @Transaction
+    suspend fun insertWithScenes(story: StoryEntity, scenes: List<StorySceneEntity>): Long {
+        val storyId = insert(story)
+        if (scenes.isNotEmpty()) insertScenes(scenes.map { it.copy(storyId = storyId) })
+        return storyId
+    }
+}
+
+@Dao
+interface NovellaDao {
+    @Query("SELECT * FROM novella_arcs ORDER BY updatedAt DESC, id DESC") fun observeArcs(): Flow<List<NovellaArcEntity>>
+    @Query("SELECT * FROM novella_arcs WHERE id = :arcId LIMIT 1") fun observeArc(arcId: Long): Flow<NovellaArcEntity?>
+    @Query("SELECT * FROM novella_chapters WHERE arcId = :arcId ORDER BY chapterIndex ASC") fun observeChapters(arcId: Long): Flow<List<NovellaChapterEntity>>
+    @Query("SELECT novella_arcs.* FROM novella_arcs INNER JOIN novella_chapters ON novella_chapters.arcId = novella_arcs.id WHERE novella_chapters.journeyId = :journeyId LIMIT 1")
+    fun observeArcForJourney(journeyId: Long): Flow<NovellaArcEntity?>
+    @Query("SELECT * FROM novella_chapters WHERE journeyId = :journeyId LIMIT 1") suspend fun chapterForJourney(journeyId: Long): NovellaChapterEntity?
+    @Query("SELECT * FROM novella_arcs WHERE id = :arcId LIMIT 1") suspend fun arcById(arcId: Long): NovellaArcEntity?
+    @Query("SELECT * FROM novella_chapters WHERE arcId = :arcId ORDER BY chapterIndex ASC") suspend fun chaptersForArc(arcId: Long): List<NovellaChapterEntity>
+    @Insert suspend fun insertArc(arc: NovellaArcEntity): Long
+    @Insert suspend fun insertChapters(chapters: List<NovellaChapterEntity>)
+    @Query("UPDATE novella_chapters SET storyId = :storyId, continuitySummary = :continuitySummary, isStale = 0, updatedAt = :updatedAt WHERE arcId = :arcId AND journeyId = :journeyId")
+    suspend fun saveChapterStory(arcId: Long, journeyId: Long, storyId: Long, continuitySummary: String?, updatedAt: Long)
+    @Query("UPDATE novella_chapters SET isStale = 1, updatedAt = :updatedAt WHERE arcId = :arcId AND chapterIndex > :chapterIndex")
+    suspend fun markLaterChaptersStale(arcId: Long, chapterIndex: Int, updatedAt: Long)
+    @Query("UPDATE novella_arcs SET updatedAt = :updatedAt WHERE id = :arcId") suspend fun touchArc(arcId: Long, updatedAt: Long)
+
+    @Transaction
+    suspend fun createArc(arc: NovellaArcEntity, chapters: List<NovellaChapterEntity>): Long {
+        val id = insertArc(arc)
+        insertChapters(chapters.map { it.copy(arcId = id) })
+        return id
+    }
 }

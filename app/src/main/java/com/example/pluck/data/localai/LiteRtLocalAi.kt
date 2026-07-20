@@ -12,6 +12,7 @@ import com.example.pluck.domain.model.LocalAiModelState
 import com.example.pluck.domain.model.StoryGenerationInput
 import com.example.pluck.domain.provider.StoryProvider
 import com.example.pluck.domain.repository.LocalAiRepository
+import com.example.pluck.data.prompt.StoryPromptBuilder
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Conversation
@@ -466,7 +467,7 @@ class GemmaLocalStoryProvider @Inject constructor(
             ).use { conversation ->
                 val contents = buildList {
                     preparedImages.forEach { add(Content.ImageFile(it.absolutePath)) }
-                    add(Content.Text(localStoryPrompt(input)))
+                    add(Content.Text(StoryPromptBuilder.build(input)))
                 }
                 val response = try {
                     withTimeout(GENERATION_TIMEOUT_MS) {
@@ -475,7 +476,7 @@ class GemmaLocalStoryProvider @Inject constructor(
                 } finally {
                     conversation.cancelProcess()
                 }
-                parseLocalStory(response)
+                StoryPromptBuilder.parse(response, input)
             }
         } finally {
             engine?.close()
@@ -547,21 +548,6 @@ private suspend fun streamResponse(conversation: Conversation, contents: Content
             if (continuation.isActive) continuation.resumeWithException(error)
         }
     }
-
-private fun localStoryPrompt(input: StoryGenerationInput): String = buildString {
-    append("The attached images are one ordered journey. Write approximately 700 to 1200 words of original fiction inspired by every place. Never write a diary, travelogue, summary, or image-by-image description. Make every place matter naturally to one continuous plot. Keep characters, chronology, cause and effect, and setting details consistent. Return exactly: TITLE: <title> then STORY: <narrative>.")
-    append(" Narrative mood: ${input.mood.promptDirection}. Use it to guide the voice, pacing, and imagery.")
-    input.variation?.let { append(" Revision direction: ${it.promptDirection}") }
-    input.genre?.let { append(" Genre: $it.") }
-    input.photos.forEachIndexed { index, photo -> append("\nScene ${index + 1}: captured at ${photo.timestamp}; place hint: ${photo.address ?: "not supplied"}; coordinates: ${photo.latitude ?: "unknown"}, ${photo.longitude ?: "unknown"}.") }
-}
-
-private fun parseLocalStory(text: String): GeneratedStory {
-    val title = Regex("(?is)TITLE\\s*:\\s*(.+?)(?:\\n|STORY\\s*:)").find(text)?.groupValues?.get(1)?.trim()?.take(160).orEmpty().ifBlank { "A Plucked Story" }
-    val story = Regex("(?is)STORY\\s*:\\s*(.+)").find(text)?.groupValues?.get(1)?.trim().orEmpty().ifBlank { text.trim() }
-    if (story.length < 80) throw IOException("The on-device model returned an incomplete story. Please try again.")
-    return GeneratedStory(title, story)
-}
 
 private fun formatBytes(value: Long): String = when {
     value < 1_000_000 -> "${value / 1_000} KB"

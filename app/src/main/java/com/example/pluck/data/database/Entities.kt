@@ -5,6 +5,8 @@ import androidx.room.ColumnInfo
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.Embedded
+import androidx.room.Relation
 import com.example.pluck.domain.model.AiProvider
 import com.example.pluck.domain.model.StoryMood
 
@@ -43,7 +45,61 @@ data class StoryEntity(
     val content: String,
     val provider: AiProvider,
     val createdAt: Long,
-    @ColumnInfo(defaultValue = "'CINEMATIC'") val mood: StoryMood = StoryMood.CINEMATIC
+    @ColumnInfo(defaultValue = "'CINEMATIC'") val mood: StoryMood = StoryMood.CINEMATIC,
+    @ColumnInfo(defaultValue = "NULL") val genre: String? = null,
+    @ColumnInfo(defaultValue = "NULL") val protagonistName: String? = null,
+    @ColumnInfo(defaultValue = "'[]'") val companionsJson: String = "[]"
+)
+
+/** Explicit provenance for Reality vs Fiction; photos are never copied into this table. */
+@Entity(
+    tableName = "story_scenes",
+    foreignKeys = [ForeignKey(entity = StoryEntity::class, parentColumns = ["id"], childColumns = ["storyId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("storyId"), Index(value = ["storyId", "paragraphIndex"])]
+)
+data class StorySceneEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val storyId: Long,
+    val photoId: Long,
+    val paragraphIndex: Int
+)
+
+data class StoryWithScenesEntity(
+    @Embedded val story: StoryEntity,
+    @Relation(parentColumn = "id", entityColumn = "storyId") val scenes: List<StorySceneEntity>
+)
+
+@Entity(tableName = "novella_arcs", indices = [Index(value = ["startDate", "endDate"])])
+data class NovellaArcEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val startDate: String,
+    val endDate: String,
+    val mood: StoryMood,
+    val genre: String?,
+    val protagonistName: String?,
+    val companionsJson: String,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
+@Entity(
+    tableName = "novella_chapters",
+    primaryKeys = ["arcId", "journeyId"],
+    foreignKeys = [
+        ForeignKey(entity = NovellaArcEntity::class, parentColumns = ["id"], childColumns = ["arcId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = JourneyEntity::class, parentColumns = ["id"], childColumns = ["journeyId"], onDelete = ForeignKey.CASCADE)
+    ],
+    indices = [Index(value = ["arcId", "chapterIndex"], unique = true), Index(value = ["journeyId"], unique = true)]
+)
+data class NovellaChapterEntity(
+    val arcId: Long,
+    val journeyId: Long,
+    val chapterIndex: Int,
+    val storyId: Long? = null,
+    val continuitySummary: String? = null,
+    val isStale: Boolean = false,
+    val updatedAt: Long
 )
 
 /**
@@ -60,5 +116,6 @@ data class JourneyLibraryRow(
     val storyTitle: String?,
     val storyProvider: AiProvider?,
     val storyCreatedAt: Long?,
-    val storyMood: StoryMood?
+    val storyMood: StoryMood?,
+    val storyGenre: String?
 )

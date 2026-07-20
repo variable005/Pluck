@@ -41,6 +41,32 @@ enum class StoryVariation(val promptDirection: String) {
     MORE_EMOTIONAL("Strengthen the characters' emotional stakes and intimate moments without becoming melodramatic.")
 }
 
+/**
+ * Optional fictional direction for one story or novella arc.
+ *
+ * These values are writing instructions only. They never identify people or animals in a photo.
+ */
+data class StoryCreativeSettings(
+    val genre: String? = null,
+    val protagonistName: String? = null,
+    val companions: List<String> = emptyList()
+) {
+    val isEmpty: Boolean
+        get() = genre.isNullOrBlank() && protagonistName.isNullOrBlank() && companions.isEmpty()
+
+    /** Trims and bounds free-form input before it reaches a remote or on-device model. */
+    fun normalized(): StoryCreativeSettings = copy(
+        genre = genre?.trim()?.take(48)?.takeIf { it.isNotBlank() },
+        protagonistName = protagonistName?.trim()?.take(48)?.takeIf { it.isNotBlank() },
+        companions = companions
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+            .take(5)
+            .map { it.take(56) }
+    )
+}
+
 data class Journey(val id: Long, val date: String, val timeZoneId: String)
 
 data class JourneyPhoto(
@@ -60,7 +86,20 @@ data class Story(
     val content: String,
     val provider: AiProvider,
     val createdAt: Long,
-    val mood: StoryMood = StoryMood.CINEMATIC
+    val mood: StoryMood = StoryMood.CINEMATIC,
+    val creativeSettings: StoryCreativeSettings = StoryCreativeSettings()
+)
+
+/** A persisted, model-supplied link between a fictional paragraph and one real captured place. */
+data class StorySceneReference(
+    val photoId: Long,
+    val paragraphIndex: Int
+)
+
+/** A saved story plus its explicit reality-to-fiction scene provenance. */
+data class StoryDetail(
+    val story: Story,
+    val scenes: List<StorySceneReference> = emptyList()
 )
 
 /**
@@ -74,7 +113,8 @@ data class StoryPreview(
     val title: String,
     val provider: AiProvider,
     val createdAt: Long,
-    val mood: StoryMood = StoryMood.CINEMATIC
+    val mood: StoryMood = StoryMood.CINEMATIC,
+    val genre: String? = null
 )
 
 /** A journey with the summary data needed to render it in the user's library. */
@@ -90,10 +130,56 @@ data class StoryGenerationInput(
     val locale: String,
     val mood: StoryMood = StoryMood.CINEMATIC,
     val variation: StoryVariation? = null,
-    val genre: String? = null
+    val creativeSettings: StoryCreativeSettings = StoryCreativeSettings(),
+    val arcContext: ArcGenerationContext? = null
 )
 
-data class GeneratedStory(val title: String, val content: String)
+/**
+ * A compact continuity hand-off for the next chapter of a multi-day novella.
+ * It is deliberately separate from prose shown in the story reader.
+ */
+data class ArcGenerationContext(
+    val arcId: Long,
+    val title: String,
+    val chapterIndex: Int,
+    val totalChapters: Int,
+    val previousContinuity: String? = null
+)
+
+/** A multi-day sequence whose daily stories share a fictional world and cast. */
+data class NovellaArc(
+    val id: Long,
+    val title: String,
+    val startDate: String,
+    val endDate: String,
+    val mood: StoryMood,
+    val creativeSettings: StoryCreativeSettings,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
+/** One daily journey's ordered chapter position in a [NovellaArc]. */
+data class NovellaChapter(
+    val arcId: Long,
+    val journeyId: Long,
+    val chapterIndex: Int,
+    val storyId: Long? = null,
+    val continuitySummary: String? = null,
+    val isStale: Boolean = false,
+    val updatedAt: Long = 0L
+)
+
+data class NovellaArcDetail(
+    val arc: NovellaArc,
+    val chapters: List<NovellaChapter>
+)
+
+data class GeneratedStory(
+    val title: String,
+    val content: String,
+    val sceneReferences: List<StorySceneReference> = emptyList(),
+    val continuitySummary: String? = null
+)
 
 sealed interface ConnectionResult {
     data object Connected : ConnectionResult

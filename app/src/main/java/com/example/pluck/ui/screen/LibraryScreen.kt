@@ -2,6 +2,8 @@ package com.example.pluck.ui.screen
 
 import android.content.Context
 import android.text.format.DateFormat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -27,7 +29,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material.icons.rounded.PictureAsPdf
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -51,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.pluck.domain.model.JourneyLibraryItem
+import com.example.pluck.domain.model.NovellaArc
+import com.example.pluck.domain.export.BookExportFormat
 import com.example.pluck.ui.components.EmptyState
 import com.example.pluck.ui.components.ExpressiveCard
 import com.example.pluck.ui.components.LoadingView
@@ -59,6 +66,7 @@ import com.example.pluck.ui.components.ObserveFloatingNavigationScroll
 import com.example.pluck.ui.components.PluckTopAppBar
 import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.LibraryViewModel
+import com.example.pluck.viewmodel.BookExportUiState
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
@@ -87,9 +95,19 @@ fun LibraryScreen(
     onOpenJourney: (Long) -> Unit,
     onOpenStory: (Long) -> Unit,
     onStartJourney: () -> Unit,
+    onCreateNovella: () -> Unit,
+    onOpenNovella: (Long) -> Unit,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showMonthExport by rememberSaveable { mutableStateOf(false) }
+    var pendingMonth by rememberSaveable { mutableStateOf<String?>(null) }
+    val pdfExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(BookExportFormat.PDF.mimeType)) { uri ->
+        pendingMonth?.let { month -> if (uri != null) viewModel.exportMonth(month, BookExportFormat.PDF, uri) }
+    }
+    val epubExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(BookExportFormat.EPUB.mimeType)) { uri ->
+        pendingMonth?.let { month -> if (uri != null) viewModel.exportMonth(month, BookExportFormat.EPUB, uri) }
+    }
     Scaffold(
         topBar = { PluckTopAppBar("Your library", "Journeys and stories, kept on this device") }
     ) { padding ->
@@ -110,19 +128,53 @@ fun LibraryScreen(
 
             else -> JourneyLibrary(
                 journeys = state.journeys,
+                arcs = state.arcs,
+                export = state.export,
                 onOpenJourney = onOpenJourney,
                 onOpenStory = onOpenStory,
+                onCreateNovella = onCreateNovella,
+                onOpenNovella = onOpenNovella,
+                onShowMonthExport = { showMonthExport = true },
                 modifier = Modifier.fillMaxSize().padding(padding)
             )
         }
+    }
+
+    if (showMonthExport) {
+        MonthExportDialog(
+            journeys = state.journeys,
+            onDismiss = { showMonthExport = false },
+            onExport = { month, format ->
+                showMonthExport = false
+                pendingMonth = month
+                when (format) {
+                    BookExportFormat.PDF -> pdfExport.launch("Pluck-${month}.pdf")
+                    BookExportFormat.EPUB -> epubExport.launch("Pluck-${month}.epub")
+                }
+            }
+        )
+    }
+
+    if (state.export.completedMessage != null || state.export.errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::clearExportMessage,
+            title = { Text(if (state.export.errorMessage != null) "Export paused" else "Book saved") },
+            text = { Text(state.export.errorMessage ?: state.export.completedMessage.orEmpty()) },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = viewModel::clearExportMessage) { Text("Done") } }
+        )
     }
 }
 
 @Composable
 private fun JourneyLibrary(
     journeys: List<JourneyLibraryItem>,
+    arcs: List<NovellaArc>,
+    export: BookExportUiState,
     onOpenJourney: (Long) -> Unit,
     onOpenStory: (Long) -> Unit,
+    onCreateNovella: () -> Unit,
+    onOpenNovella: (Long) -> Unit,
+    onShowMonthExport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var grouping by rememberSaveable { mutableStateOf(LibraryGrouping.WEEK) }
@@ -161,6 +213,35 @@ private fun JourneyLibrary(
                             )
                         }
                     }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        androidx.compose.material3.TextButton(onClick = onShowMonthExport) {
+                            Icon(Icons.Rounded.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text("Export a month", modifier = Modifier.padding(start = 6.dp))
+                        }
+                        androidx.compose.material3.TextButton(onClick = onCreateNovella) {
+                            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text("New novella", modifier = Modifier.padding(start = 6.dp))
+                        }
+                    }
+                    if (export.isExporting) {
+                        StatusPill(export.progressLabel ?: "Creating your private book…")
+                    }
+                }
+            }
+            if (arcs.isNotEmpty()) {
+                item(key = "novella_heading") {
+                    Text(
+                        "Travelogue novellas",
+                        modifier = Modifier.padding(top = 8.dp),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                items(arcs, key = { it.id }) { arc ->
+                    NovellaLibraryCard(arc = arc, onOpen = { onOpenNovella(arc.id) })
                 }
             }
             sections.forEach { section ->
@@ -235,6 +316,7 @@ private fun JourneyLibraryCard(item: JourneyLibraryItem, onOpen: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     StatusPill(story.mood.displayName)
+                    story.genre?.let { genre -> StatusPill(genre) }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -252,6 +334,103 @@ private fun JourneyLibraryCard(item: JourneyLibraryItem, onOpen: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun NovellaLibraryCard(arc: NovellaArc, onOpen: () -> Unit) {
+    ExpressiveCard(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(52.dp),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.tertiaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoStories,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f).padding(start = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(arc.title, style = MaterialTheme.typography.titleLarge, maxLines = 2)
+                Text(
+                    "${arc.startDate.monthLabel()} · ${arc.mood.displayName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                arc.creativeSettings.genre?.let { genre -> StatusPill(genre) }
+            }
+            Icon(
+                imageVector = Icons.Rounded.ArrowOutward,
+                contentDescription = "Open novella",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun MonthExportDialog(
+    journeys: List<JourneyLibraryItem>,
+    onDismiss: () -> Unit,
+    onExport: (String, BookExportFormat) -> Unit
+) {
+    val months = remember(journeys) {
+        journeys
+            .filter { it.story != null }
+            .groupBy { it.journey.date.take(7) }
+            .mapValues { (_, items) -> items.size }
+            .toList()
+            .sortedByDescending { it.first }
+    }
+    var selectedMonth by rememberSaveable(months) { mutableStateOf(months.firstOrNull()?.first.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Export a month") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Pluck uses the latest saved version of each daily story in the month. The book is created locally; photos are re-encoded without EXIF metadata.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (months.isEmpty()) {
+                    Text("Save at least one story before creating a monthly book.")
+                } else {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(months, key = { it.first }) { (month, count) ->
+                            FilterChip(
+                                selected = selectedMonth == month,
+                                onClick = { selectedMonth = month },
+                                label = { Text("${month.toMonthLabel()} · $count") }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                androidx.compose.material3.TextButton(
+                    enabled = selectedMonth.isNotBlank(),
+                    onClick = { onExport(selectedMonth, BookExportFormat.PDF) }
+                ) { Text("PDF") }
+                androidx.compose.material3.TextButton(
+                    enabled = selectedMonth.isNotBlank(),
+                    onClick = { onExport(selectedMonth, BookExportFormat.EPUB) }
+                ) { Text("EPUB") }
+            }
+        },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 private fun List<JourneyLibraryItem>.groupedBy(grouping: LibraryGrouping): List<LibrarySection> =
@@ -275,6 +454,10 @@ private fun String.weekLabel(): String {
 private fun String.monthLabel(): String = asLocalDate()
     ?.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
     ?: this
+
+private fun String.toMonthLabel(): String = runCatching {
+    LocalDate.parse("${this}-01").format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+}.getOrDefault(this)
 
 private fun String.seasonLabel(): String {
     val date = asLocalDate() ?: return this

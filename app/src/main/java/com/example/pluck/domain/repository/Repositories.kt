@@ -7,6 +7,12 @@ import com.example.pluck.domain.model.Journey
 import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.Story
+import com.example.pluck.domain.model.StoryDetail
+import com.example.pluck.domain.model.StorySceneReference
+import com.example.pluck.domain.model.StoryCreativeSettings
+import com.example.pluck.domain.model.StoryMood
+import com.example.pluck.domain.model.NovellaArc
+import com.example.pluck.domain.model.NovellaArcDetail
 import com.example.pluck.domain.model.LocalAiModelState
 import kotlinx.coroutines.flow.Flow
 
@@ -22,7 +28,25 @@ interface JourneyRepository {
 
 interface StoryRepository {
     fun observeLatest(journeyId: Long): Flow<Story?>
-    suspend fun save(story: Story): Long
+    fun observeLatestDetail(journeyId: Long): Flow<StoryDetail?>
+    suspend fun save(story: Story, scenes: List<StorySceneReference> = emptyList()): Long
+}
+
+/** Stores the membership and continuity state for private, multi-day fictional novellas. */
+interface NovellaRepository {
+    fun observeArcs(): Flow<List<NovellaArc>>
+    fun observeArcDetail(arcId: Long): Flow<NovellaArcDetail?>
+    fun observeArcForJourney(journeyId: Long): Flow<NovellaArc?>
+    suspend fun createArc(
+        title: String,
+        journeys: List<Journey>,
+        mood: StoryMood,
+        creativeSettings: StoryCreativeSettings
+    ): Long
+
+    /** Returns a context only when the prior chapter has a stable continuity hand-off. */
+    suspend fun generationContextForJourney(journeyId: Long): com.example.pluck.domain.model.ArcGenerationContext?
+    suspend fun saveGeneratedChapter(journeyId: Long, storyId: Long, continuitySummary: String?)
 }
 
 interface SettingsRepository {

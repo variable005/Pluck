@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import com.example.pluck.data.network.StoryApi
+import com.example.pluck.data.prompt.StoryPromptBuilder
 import com.example.pluck.domain.model.AiProvider
 import com.example.pluck.domain.model.ConnectionResult
 import com.example.pluck.domain.model.GeneratedStory
@@ -32,26 +33,6 @@ private const val JSON_MEDIA_TYPE = "application/json; charset=utf-8"
 private val json = Json { ignoreUnknownKeys = true }
 
 private class ProviderHttpException(val code: Int, message: String) : IOException(message)
-
-private fun storyPrompt(input: StoryGenerationInput): String = buildString {
-    append("You are Pluck's invisible fiction writer. The attached images are an ordered journey. Analyze EVERY image and its accompanying metadata. Create one continuous fictional narrative inspired by the places, not a diary, journal, travelogue, or image-by-image description. Each place must matter naturally to the plot. Keep characters, stakes, chronology, and details consistent. Never present uncertain location or identity guesses as facts. Write 700 to 1200 words in ${input.locale}. ")
-    append("Narrative mood: ${input.mood.promptDirection}. Let this guide the voice, imagery, pacing, and atmosphere while keeping the story cohesive. ")
-    input.variation?.let { append("Revision direction: ${it.promptDirection} ") }
-    input.genre?.let { append("Genre: $it. ") }
-    append("Return exactly this format: TITLE: a compelling title, followed by a newline and STORY: followed by the narrative.")
-    input.photos.forEachIndexed { index, photo ->
-        append("\nImage ${index + 1}: captured at ${photo.timestamp}; place hint: ${photo.address ?: "not supplied"}; coordinates: ${photo.latitude ?: "unknown"}, ${photo.longitude ?: "unknown"}.")
-    }
-}
-
-private fun parseStory(text: String): GeneratedStory {
-    val titleMatch = Regex("(?is)TITLE\\s*:\\s*(.+?)(?:\\n|STORY\\s*:)").find(text)
-    val bodyMatch = Regex("(?is)STORY\\s*:\\s*(.+)").find(text)
-    val title = titleMatch?.groupValues?.get(1)?.trim()?.take(160).orEmpty().ifBlank { "A Plucked Story" }
-    val body = bodyMatch?.groupValues?.get(1)?.trim().orEmpty().ifBlank { text.trim() }
-    if (body.length < 80) throw IOException("The provider returned an incomplete story. Please try again.")
-    return GeneratedStory(title, body)
-}
 
 private fun imageBase64(path: String): String {
     val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -107,8 +88,8 @@ abstract class OpenAiCompatibleProvider(private val api: StoryApi) : RestStoryPr
 
     override suspend fun generateStory(input: StoryGenerationInput, apiKey: String): GeneratedStory {
         val photos = input.photos.map { imageBase64(it.imagePath) }
-        val response = request(endpoint, headers(apiKey), openAiPayload(model, storyPrompt(input), photos, 1800))
-        return parseStory(response["choices"]!!.jsonArray[0].jsonObject["message"]!!.jsonObject["content"]!!.jsonPrimitive.content)
+        val response = request(endpoint, headers(apiKey), openAiPayload(model, StoryPromptBuilder.build(input), photos, 1800))
+        return StoryPromptBuilder.parse(response["choices"]!!.jsonArray[0].jsonObject["message"]!!.jsonObject["content"]!!.jsonPrimitive.content, input)
     }
 
     override suspend fun probe(apiKey: String) {
@@ -149,9 +130,9 @@ class GeminiStoryProvider @Inject constructor(private val api: StoryApi) : RestS
         put("generationConfig", buildJsonObject { put("maxOutputTokens", 1800); put("temperature", 0.85) })
     }
     override suspend fun generateStory(input: StoryGenerationInput, apiKey: String): GeneratedStory {
-        val response = request(url(apiKey), emptyMap(), payload(storyPrompt(input), input.photos.map { imageBase64(it.imagePath) }))
+        val response = request(url(apiKey), emptyMap(), payload(StoryPromptBuilder.build(input), input.photos.map { imageBase64(it.imagePath) }))
         val text = response["candidates"]!!.jsonArray[0].jsonObject["content"]!!.jsonObject["parts"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content
-        return parseStory(text)
+        return StoryPromptBuilder.parse(text, input)
     }
     override suspend fun probe(apiKey: String) { request(url(apiKey), emptyMap(), payload("Reply only OK.", emptyList())) }
 }
@@ -165,8 +146,8 @@ class ClaudeStoryProvider @Inject constructor(private val api: StoryApi) : RestS
         put("messages", buildJsonArray { add(buildJsonObject { put("role", "user"); put("content", buildJsonArray { photos.forEach { encoded -> add(buildJsonObject { put("type", "image"); put("source", buildJsonObject { put("type", "base64"); put("media_type", "image/jpeg"); put("data", encoded) }) }) }; add(buildJsonObject { put("type", "text"); put("text", prompt) }) }) }) })
     }
     override suspend fun generateStory(input: StoryGenerationInput, apiKey: String): GeneratedStory {
-        val response = request(endpoint, headers(apiKey), payload(storyPrompt(input), input.photos.map { imageBase64(it.imagePath) }))
-        return parseStory(response["content"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content)
+        val response = request(endpoint, headers(apiKey), payload(StoryPromptBuilder.build(input), input.photos.map { imageBase64(it.imagePath) }))
+        return StoryPromptBuilder.parse(response["content"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content, input)
     }
     override suspend fun probe(apiKey: String) { request(endpoint, headers(apiKey), payload("Reply only OK.", emptyList())) }
 }
