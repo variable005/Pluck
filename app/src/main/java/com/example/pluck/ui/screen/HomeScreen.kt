@@ -1,13 +1,18 @@
 package com.example.pluck.ui.screen
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -17,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material3.Icon
@@ -25,20 +31,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.pluck.ui.components.AnimatedPrimaryButton
-import com.example.pluck.ui.components.ExpressiveCard
 import com.example.pluck.ui.components.LocalFloatingNavigationBarClearance
 import com.example.pluck.ui.components.ObserveFloatingNavigationScroll
 import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.HomeViewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/** A quiet, focused entry point for beginning or continuing today's journey. */
+/** A minimal, expressive entry point for beginning or continuing today's journey. */
 @Composable
 fun HomeScreen(
     onJourney: (Long) -> Unit,
@@ -49,10 +64,16 @@ fun HomeScreen(
     val hasJourney = state.journey != null
     val scrollState = rememberScrollState()
     val floatingBarClearance = LocalFloatingNavigationBarClearance.current
+    var contentVisible by remember { mutableStateOf(false) }
 
     ObserveFloatingNavigationScroll(scrollState)
+    LaunchedEffect(Unit) { contentVisible = true }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         Column(
             modifier = Modifier
                 .widthIn(max = 680.dp)
@@ -60,129 +81,154 @@ fun HomeScreen(
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .verticalScroll(scrollState)
-                .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = floatingBarClearance + 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = floatingBarClearance + 28.dp),
+            verticalArrangement = Arrangement.spacedBy(32.dp)
         ) {
-            HomeHeader(onSettings)
+            MinimalHomeHeader(onSettings)
 
-            Spacer(Modifier.height(20.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = when {
-                        !state.preferredName.isNullOrBlank() -> "Good to see you,\n${state.preferredName}."
-                        hasJourney -> "Keep the story\nmoving."
-                        else -> "A story starts\nwith one place."
-                    },
-                    style = MaterialTheme.typography.displaySmall
+            AnimatedVisibility(
+                visible = contentVisible,
+                enter = fadeIn() + slideInVertically(
+                    initialOffsetY = { it / 10 },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
                 )
-                Text(
-                    text = if (hasJourney) {
-                        "Add the next place when you arrive. Pluck will hold the thread together."
-                    } else {
-                        "Capture a place, then let Pluck turn the path into fiction."
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            TodayCard(hasJourney = hasJourney)
-
-            AnimatedPrimaryButton(
-                text = if (hasJourney) "Continue today’s journey" else "Start today’s journey",
-                onClick = { viewModel.start(onJourney) },
-                modifier = Modifier.fillMaxWidth(),
-                icon = {
-                    Icon(
-                        imageVector = if (hasJourney) Icons.Rounded.AutoStories else Icons.Rounded.TravelExplore,
-                        contentDescription = null
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(28.dp)) {
+                    HomeHeading(
+                        preferredName = state.preferredName,
+                        hasJourney = hasJourney
+                    )
+                    MinimalJourneyCard(
+                        hasJourney = hasJourney,
+                        onJourney = { viewModel.start(onJourney) }
                     )
                 }
-            )
+            }
         }
     }
 }
 
 @Composable
-private fun HomeHeader(onSettings: () -> Unit) {
+private fun MinimalHomeHeader(onSettings: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Surface(
-            modifier = Modifier.size(48.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Rounded.AutoStories,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp)
-        ) {
-            Text("Pluck", style = MaterialTheme.typography.titleLarge)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("PLUCK", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Text(
-                "Your day, retold.",
-                style = MaterialTheme.typography.bodyMedium,
+                text = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault())),
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Surface(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier
+                .size(48.dp)
+                .semantics { contentDescription = "Open settings" },
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 1.dp
         ) {
             IconButton(onClick = onSettings) {
-                Icon(Icons.Rounded.Settings, contentDescription = "Open settings")
+                Icon(Icons.Rounded.Settings, contentDescription = null)
             }
         }
     }
 }
 
 @Composable
-private fun TodayCard(hasJourney: Boolean) {
-    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+private fun HomeHeading(preferredName: String?, hasJourney: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        AnimatedContent(
+            targetState = Triple(preferredName, hasJourney, preferredName.isNullOrBlank()),
+            label = "homeHeadline"
+        ) { (name, inProgress, nameMissing) ->
+            Text(
+                text = when {
+                    !nameMissing -> "Hello, $name."
+                    inProgress -> "Your story is\nwaiting."
+                    else -> "A place can be\nthe beginning."
+                },
+                style = MaterialTheme.typography.displaySmall
+            )
+        }
+        Text(
+            text = if (hasJourney) {
+                "Add another place when you are ready."
+            } else {
+                "Collect the places that matter, then turn their path into fiction."
+            },
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.widthIn(max = 460.dp)
+        )
+    }
+}
+
+@Composable
+private fun MinimalJourneyCard(hasJourney: Boolean, onJourney: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 1.dp,
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
-            Surface(
-                modifier = Modifier.size(52.dp),
-                shape = CircleShape,
-                color = if (hasJourney) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (hasJourney) Icons.Rounded.AutoStories else Icons.Rounded.TravelExplore,
-                        contentDescription = null,
-                        tint = if (hasJourney) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier.size(44.dp),
+                        shape = CircleShape,
+                        color = if (hasJourney) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (hasJourney) Icons.Rounded.AutoStories else Icons.Rounded.LocationOn,
+                                contentDescription = null,
+                                tint = if (hasJourney) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    Text(
+                        text = if (hasJourney) "Today's journey" else "Today",
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
+                StatusPill(if (hasJourney) "In progress" else "Ready", active = hasJourney)
             }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = if (hasJourney) "Today’s journey is underway" else "Nothing captured yet",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = if (hasJourney) "Your next photo becomes the next scene." else "Start with a place you want to remember.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                StatusPill(if (hasJourney) "Journey in progress" else "Ready when you are", active = hasJourney)
-            }
+
+            Text(
+                text = if (hasJourney) "The next photo\nbecomes a scene." else "Start with one\nplace you notice.",
+                style = MaterialTheme.typography.headlineMedium
+            )
+
+            AnimatedPrimaryButton(
+                text = if (hasJourney) "Add next place" else "Start journey",
+                onClick = onJourney,
+                modifier = Modifier.fillMaxWidth(),
+                icon = {
+                    Icon(
+                        imageVector = if (hasJourney) Icons.Rounded.LocationOn else Icons.Rounded.TravelExplore,
+                        contentDescription = null
+                    )
+                }
+            )
         }
     }
 }
