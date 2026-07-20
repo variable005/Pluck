@@ -3,25 +3,37 @@ package com.example.pluck.ui.screen
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.text.format.DateFormat
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddAPhoto
@@ -30,16 +42,22 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,14 +65,16 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.pluck.domain.model.JourneyPhoto
+import com.example.pluck.domain.model.Story
 import com.example.pluck.ui.components.AnimatedPrimaryButton
-import com.example.pluck.ui.components.EmptyState
 import com.example.pluck.ui.components.ExpressiveCard
 import com.example.pluck.ui.components.LocalFloatingNavigationBarClearance
 import com.example.pluck.ui.components.ObserveFloatingNavigationScroll
@@ -65,7 +85,11 @@ import com.example.pluck.ui.components.rememberPluckHaptics
 import com.example.pluck.viewmodel.TimelineViewModel
 import java.io.File
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Date
+import java.util.Locale
+
+private val JourneyActionDockHeight = 132.dp
 
 @Composable
 fun TimelineScreen(
@@ -83,17 +107,92 @@ fun TimelineScreen(
     // The normal route only represents today's active journey. While Room is loading it,
     // keep that route actionable instead of briefly presenting an archive empty state.
     val canAddPlaces = !readOnly && (journey == null || journey.date == LocalDate.now().toString())
-    val hasStoryAction = state.story != null || state.photos.size >= 2
+    val showActionDock = (!readOnly && state.photos.isNotEmpty()) || (readOnly && state.story != null)
+    val hasPrivateRoute = remember(state.photos) { state.photos.toRoutePoints().size >= 2 }
+    val showStickyPlacesHeader by remember(hasPrivateRoute) {
+        derivedStateOf {
+            val placesHeaderIndex = if (hasPrivateRoute) 3 else 2
+            listState.firstVisibleItemIndex > placesHeaderIndex ||
+                (listState.firstVisibleItemIndex == placesHeaderIndex && listState.firstVisibleItemScrollOffset > 52)
+        }
+    }
     if (!readOnly) ObserveFloatingNavigationScroll(listState)
     Scaffold(
         topBar = {
             PluckTopAppBar(
-                title = if (readOnly) "Saved journey" else "Today’s journey",
-                subtitle = if (readOnly) "A day worth revisiting" else "A place at a time",
+                title = if (readOnly) "Saved journey" else "Journey",
+                subtitle = if (readOnly) "A day worth revisiting" else "One place at a time",
                 onBack = onBack
             )
-        },
-        floatingActionButton = {
+        }
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            if (state.photos.isEmpty()) {
+                JourneyEmptyState(
+                    canAddPlaces = canAddPlaces,
+                    onAction = if (canAddPlaces) ({ onCapture(viewModel.journeyId) }) else onBack,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = floatingBarClearance + 24.dp)
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .widthIn(max = 760.dp)
+                        .fillMaxSize()
+                        .align(Alignment.TopCenter),
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 12.dp,
+                        bottom = floatingBarClearance + if (showActionDock) JourneyActionDockHeight + 24.dp else 28.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item(key = "journey_hero") {
+                        JourneyHero(
+                            date = journey?.date ?: LocalDate.now().toString(),
+                            photos = state.photos,
+                            story = state.story,
+                            readOnly = readOnly
+                        )
+                    }
+                    item(key = "journey_progress") {
+                        JourneyProgressCard(
+                            photoCount = state.photos.size,
+                            story = state.story,
+                            hasPrivateRoute = hasPrivateRoute
+                        )
+                    }
+                    if (hasPrivateRoute) {
+                        item(key = "private_route") {
+                            JourneyRouteCard(photos = state.photos)
+                        }
+                    }
+                    item(key = "places_heading") {
+                        JourneyPlacesHeading(state.photos.size)
+                    }
+                    stickyHeader {
+                        JourneyStickyPlacesHeader(
+                            visible = showStickyPlacesHeader,
+                            photoCount = state.photos.size
+                        )
+                    }
+                    itemsIndexed(state.photos, key = { _, photo -> photo.id }) { index, photo ->
+                        TimelineItem(
+                            photo = photo,
+                            order = index + 1,
+                            total = state.photos.size,
+                            isLast = index == state.photos.lastIndex,
+                            canDelete = canAddPlaces,
+                            onDelete = { viewModel.delete(photo) },
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+                }
+            }
+
             if (canAddPlaces) {
                 ExtendedFloatingActionButton(
                     text = { Text("Add place") },
@@ -103,63 +202,343 @@ fun TimelineScreen(
                         onCapture(viewModel.journeyId)
                     },
                     expanded = !listState.isScrollInProgress,
-                    shape = MaterialTheme.shapes.medium,
+                    shape = MaterialTheme.shapes.large,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(
+                            end = 20.dp,
+                            bottom = floatingBarClearance + if (showActionDock) JourneyActionDockHeight + 16.dp else 16.dp
+                        )
                 )
             }
-        },
-        bottomBar = {
-            AnimatedVisibility(hasStoryAction, enter = fadeIn() + slideInVertically { it / 2 }) {
-                // The app-level navigation floats above this action, so root-provided clearance
-                // keeps both controls comfortably reachable under gesture navigation.
-                Column(Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = floatingBarClearance)) {
-                    AnimatedPrimaryButton(
-                        text = if (state.story == null) "Generate your story" else "Read your story",
-                        onClick = { onStory(viewModel.journeyId) },
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = { Icon(Icons.Rounded.AutoStories, contentDescription = null) }
+
+            AnimatedVisibility(
+                visible = showActionDock,
+                modifier = Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 20.dp, end = 20.dp, bottom = floatingBarClearance),
+                enter = fadeIn(tween(220)) + slideInVertically(tween(280, easing = FastOutSlowInEasing)) { it / 2 } + scaleIn(initialScale = 0.96f),
+                exit = fadeOut(tween(150)) + slideOutVertically(tween(180)) { it / 2 } + scaleOut(targetScale = 0.96f)
+            ) {
+                JourneyActionDock(
+                    photoCount = state.photos.size,
+                    story = state.story,
+                    readOnly = readOnly,
+                    onGenerateOrRead = { onStory(viewModel.journeyId) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun JourneyEmptyState(
+    canAddPlaces: Boolean,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = true,
+        modifier = modifier,
+        enter = fadeIn(tween(420)) + scaleIn(initialScale = 0.94f, animationSpec = tween(420, easing = FastOutSlowInEasing))
+    ) {
+        Column(
+            modifier = Modifier.widthIn(max = 440.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Surface(
+                modifier = Modifier.size(104.dp),
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                tonalElevation = 2.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Place,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
-        }
-    ) { padding ->
-        if (state.photos.isEmpty()) {
-            EmptyState(
-                icon = Icons.Rounded.Place,
-                title = if (canAddPlaces) "Where will the story begin?" else "No places were saved",
-                body = if (canAddPlaces) "Capture one photo at each place you visit. Pluck will hold the sequence for later." else "This journey did not keep any captured places.",
-                action = if (canAddPlaces) "Capture first place" else "Back to library",
-                onAction = if (canAddPlaces) ({ onCapture(viewModel.journeyId) }) else onBack,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = floatingBarClearance + 24.dp)
+            Spacer(Modifier.height(28.dp))
+            Text(
+                text = if (canAddPlaces) "Where will the story begin?" else "No places were saved",
+                style = MaterialTheme.typography.headlineLarge,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 8.dp,
-                    bottom = if (hasStoryAction) 24.dp else floatingBarClearance + 24.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                stickyHeader {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(if (readOnly) "Captured places" else "Today", style = MaterialTheme.typography.headlineLarge)
-                        StatusPill("${state.photos.size} ${if (state.photos.size == 1) "place" else "places"}")
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = if (canAddPlaces) {
+                    "Capture one meaningful place at a time. Pluck will keep the order, then turn it into fiction."
+                } else {
+                    "This saved journey did not keep any captured places."
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(Modifier.height(24.dp))
+            AnimatedPrimaryButton(
+                text = if (canAddPlaces) "Capture first place" else "Back to library",
+                onClick = onAction,
+                modifier = Modifier.fillMaxWidth(),
+                icon = { Icon(if (canAddPlaces) Icons.Rounded.AddAPhoto else Icons.Rounded.AutoStories, contentDescription = null) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun JourneyHero(
+    date: String,
+    photos: List<JourneyPhoto>,
+    story: Story?,
+    readOnly: Boolean
+) {
+    val photoCount = photos.size
+    val dayLabel = remember(date) { formatJourneyDate(date) }
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        tonalElevation = 1.dp
+    ) {
+        Column(Modifier.padding(24.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = if (readOnly) "A day, retold" else "Your story is taking shape",
+                        style = MaterialTheme.typography.headlineLarge
+                    )
+                    Text(
+                        text = dayLabel,
+                        modifier = Modifier.padding(top = 6.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+                    )
+                }
+                Surface(
+                    modifier = Modifier.size(60.dp),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(photoCount.toString(), style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            if (photoCount == 1) "place" else "places",
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
                 }
-                item(key = "private_route") {
-                    JourneyRouteCard(photos = state.photos)
-                }
-                items(state.photos, key = { it.id }) { photo -> TimelineItem(photo, canDelete = canAddPlaces, onDelete = { viewModel.delete(photo) }) }
-                item { if (state.photos.size == 1 && state.story == null) Text("One more place unlocks story generation.", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
             }
+            Text(
+                text = when {
+                    story != null -> "Your fictional story is ready to read."
+                    photoCount >= 2 -> "Every captured place now has a role to play."
+                    else -> "One more place unlocks your first story."
+                },
+                modifier = Modifier.padding(top = 18.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.84f)
+            )
+            JourneyPhotoStrip(photos, modifier = Modifier.padding(top = 20.dp))
+            if (story != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f)
+                ) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Story ready", style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            story.title,
+                            modifier = Modifier.padding(top = 3.dp),
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun JourneyPhotoStrip(photos: List<JourneyPhoto>, modifier: Modifier = Modifier) {
+    if (photos.isEmpty()) return
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        photos.take(4).forEach { photo ->
+            AsyncImage(
+                model = File(photo.imagePath),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(MaterialTheme.shapes.medium),
+                contentScale = ContentScale.Crop
+            )
+        }
+        if (photos.size > 4) {
+            Surface(
+                modifier = Modifier.size(60.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("+${photos.size - 4}", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun JourneyProgressCard(photoCount: Int, story: Story?, hasPrivateRoute: Boolean) {
+    val ready = photoCount >= 2
+    val title = when {
+        story != null -> "Story saved"
+        ready -> "Ready for the reveal"
+        else -> "One more place unlocks a story"
+    }
+    val body = when {
+        story != null -> "You can return to this version anytime from your library."
+        ready -> "Pluck can now connect every place into one continuous fictional story."
+        else -> "Keep moving. Your next capture completes the minimum story sequence."
+    }
+    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = MaterialTheme.shapes.large,
+                    color = if (ready || story != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (ready || story != null) Icons.Rounded.AutoStories else Icons.Rounded.Place,
+                            contentDescription = null,
+                            tint = if (ready || story != null) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleMedium)
+                    Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (story == null) {
+                LinearProgressIndicator(
+                    progress = { (photoCount / 2f).coerceAtMost(1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
+                Text(
+                    text = "$photoCount of 2 places needed to generate",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (!hasPrivateRoute && photoCount >= 2) {
+                HorizontalDivider()
+                Text(
+                    "Location data stays private. Capture two places with location enabled to see a local route sketch.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun JourneyPlacesHeading(photoCount: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text("Captured places", style = MaterialTheme.typography.titleLarge)
+            Text("The order becomes the story", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        StatusPill("$photoCount ${if (photoCount == 1) "place" else "places"}")
+    }
+}
+
+@Composable
+private fun JourneyStickyPlacesHeader(visible: Boolean, photoCount: Int) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(180)) + slideInVertically(tween(180)) { -it / 3 },
+        exit = fadeOut(tween(120)) + slideOutVertically(tween(120)) { -it / 3 }
+    ) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Captured places", style = MaterialTheme.typography.titleMedium)
+                StatusPill("$photoCount")
+            }
+        }
+    }
+}
+
+@Composable
+private fun JourneyActionDock(
+    photoCount: Int,
+    story: Story?,
+    readOnly: Boolean,
+    onGenerateOrRead: () -> Unit
+) {
+    val ready = story != null || photoCount >= 2
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 6.dp,
+        shadowElevation = 14.dp
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AnimatedContent(targetState = Triple(story != null, ready, readOnly), label = "journeyDockCopy") { (hasStory, isReady, savedJourney) ->
+                Column {
+                    Text(
+                        text = when {
+                            hasStory -> "Your story is ready"
+                            isReady -> "Your journey is ready to become fiction"
+                            else -> "One more place unlocks story generation"
+                        },
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = when {
+                            hasStory -> "Open the saved story whenever you are ready."
+                            isReady -> "Choose a mood on the next screen, then let Pluck connect the day."
+                            savedJourney -> "This journey needs more captured places before it can become a story."
+                            else -> "The Generate Story button will come alive after your next capture."
+                        },
+                        modifier = Modifier.padding(top = 2.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            AnimatedPrimaryButton(
+                text = if (story != null) "Read your story" else "Generate your story",
+                onClick = onGenerateOrRead,
+                enabled = ready,
+                modifier = Modifier.fillMaxWidth(),
+                icon = { Icon(Icons.Rounded.AutoStories, contentDescription = null) }
+            )
         }
     }
 }
@@ -173,75 +552,75 @@ fun TimelineScreen(
 private fun JourneyRouteCard(photos: List<JourneyPhoto>) {
     val routePoints = remember(photos) { photos.toRoutePoints() }
     val missingLocationCount = photos.size - routePoints.size
-    val hasRoute = routePoints.size >= 2
+    if (routePoints.size < 2) return
+    val haptics = rememberPluckHaptics()
+    var expanded by rememberSaveable(routePoints.size) { mutableStateOf(false) }
 
     ExpressiveCard(
-        modifier = Modifier.semantics {
-            contentDescription = if (hasRoute) {
-                "Private route sketch with ${routePoints.size} located places in capture order."
-            } else {
-                "Private route unavailable because fewer than two places have location data."
-            }
-        }
+        onClick = {
+            haptics.perform(PluckHapticEvent.Navigation)
+            expanded = !expanded
+        },
+        modifier = Modifier.animateContentSize()
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        modifier = Modifier.size(40.dp),
-                        shape = MaterialTheme.shapes.medium,
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.Route,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+            Column(Modifier.padding(18.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(44.dp),
+                            shape = MaterialTheme.shapes.large,
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Route,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                        Column(Modifier.padding(start = 12.dp)) {
+                            Text("Private route", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "${routePoints.size} located places · only on this device",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    Spacer(Modifier.width(12.dp))
+                    StatusPill(if (expanded) "Collapse" else "Expand")
+                }
+
+                AnimatedContent(targetState = expanded, label = "routePreviewSize") { showFullRoute ->
                     Column {
-                        Text("Private route", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "A local sketch, never a live map",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        LocalRouteCanvas(
+                            points = routePoints,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(if (showFullRoute) 208.dp else 128.dp)
+                                .padding(top = 16.dp)
                         )
+                        if (showFullRoute) {
+                            Spacer(Modifier.height(12.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                RouteLegend(label = "Start", order = routePoints.first().order)
+                                RouteLegend(label = "Finish", order = routePoints.last().order, alignEnd = true)
+                            }
+                            if (missingLocationCount > 0) {
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    "$missingLocationCount ${if (missingLocationCount == 1) "place was" else "places were"} captured without location and is not shown here.",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
-                StatusPill(if (hasRoute) "On device" else "Unavailable", active = hasRoute)
-            }
-
-            Spacer(Modifier.height(16.dp))
-            if (hasRoute) {
-                LocalRouteCanvas(
-                    points = routePoints,
-                    modifier = Modifier.fillMaxWidth().height(208.dp)
-                )
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    RouteLegend(label = "Start", order = routePoints.first().order)
-                    RouteLegend(label = "Finish", order = routePoints.last().order, alignEnd = true)
-                }
-                if (missingLocationCount > 0) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        "$missingLocationCount ${if (missingLocationCount == 1) "place was" else "places were"} captured without location, so ${if (missingLocationCount == 1) "it is" else "they are"} not shown on this route.",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                RouteUnavailableState(
-                    hasOneLocatedPlace = routePoints.size == 1,
-                    totalPlaces = photos.size
-                )
-            }
         }
     }
 }
@@ -393,42 +772,124 @@ private data class RouteCanvasPoint(
 )
 
 @Composable
-private fun TimelineItem(photo: JourneyPhoto, canDelete: Boolean, onDelete: () -> Unit) {
+private fun TimelineItem(
+    photo: JourneyPhoto,
+    order: Int,
+    total: Int,
+    isLast: Boolean,
+    canDelete: Boolean,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val haptics = rememberPluckHaptics()
-    AnimatedVisibility(visible = true, enter = fadeIn() + slideInVertically { it / 5 }) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(end = 12.dp)) {
-                androidx.compose.material3.Surface(Modifier.size(14.dp), shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primary) {}
-                androidx.compose.foundation.layout.Box(Modifier.width(2.dp).height(112.dp).padding(top = 8.dp).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.outlineVariant))
+    val context = LocalContext.current
+    val time = remember(photo.timestamp) { DateFormat.getTimeFormat(context).format(Date(photo.timestamp)) }
+    val nodeColor = when {
+        order == 1 -> MaterialTheme.colorScheme.tertiary
+        isLast -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.secondary
+    }
+    val nodeContent = when {
+        order == 1 -> MaterialTheme.colorScheme.onTertiary
+        isLast -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.onSecondary
+    }
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn(tween(280)) + scaleIn(initialScale = 0.97f) + slideInVertically(tween(280, easing = FastOutSlowInEasing)) { it / 8 }
+    ) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .semantics {
+                    contentDescription = "Place $order of $total, captured at $time. ${photo.address ?: "Place name unavailable"}"
+                },
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(
+                modifier = Modifier
+                    .width(38.dp)
+                    .fillMaxHeight()
+                    .padding(end = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = nodeColor
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(order.toString(), style = MaterialTheme.typography.labelLarge, color = nodeContent)
+                    }
+                }
+                if (!isLast) {
+                    Box(
+                        Modifier
+                            .padding(top = 8.dp)
+                            .width(2.dp)
+                            .weight(1f)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
+                }
             }
             ExpressiveCard(modifier = Modifier.weight(1f)) {
                 Column {
-                    AsyncImage(
-                        model = File(photo.imagePath),
-                        contentDescription = "Journey place captured at ${DateFormat.getTimeFormat(androidx.compose.ui.platform.LocalContext.current).format(Date(photo.timestamp))}",
-                        modifier = Modifier.fillMaxWidth().height(176.dp).clip(MaterialTheme.shapes.large),
-                        contentScale = ContentScale.Crop
-                    )
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(DateFormat.getTimeFormat(androidx.compose.ui.platform.LocalContext.current).format(Date(photo.timestamp)), style = MaterialTheme.typography.titleMedium)
-                            Spacer(Modifier.height(4.dp))
-                            Text(photo.address ?: "A place without a label", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-                        }
+                    Box(Modifier.fillMaxWidth().height(178.dp)) {
+                        AsyncImage(
+                            model = File(photo.imagePath),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.extraLarge),
+                            contentScale = ContentScale.Crop
+                        )
                         if (canDelete) {
-                            IconButton(
-                                onClick = {
-                                    haptics.perform(PluckHapticEvent.DestructiveAction)
-                                    onDelete()
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(12.dp)
+                                    .size(44.dp),
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                tonalElevation = 3.dp,
+                                shadowElevation = 6.dp
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        haptics.perform(PluckHapticEvent.DestructiveAction)
+                                        onDelete()
+                                    }
+                                ) {
+                                    Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete place $order")
                                 }
-                            ) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete this place") }
+                            }
                         }
+                    }
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            StatusPill("Place ${order.toString().padStart(2, '0')}")
+                            Text(
+                                text = "Captured at $time",
+                                modifier = Modifier.padding(start = 10.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            photo.address ?: "A place without a label",
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
         }
     }
 }
+
+private fun formatJourneyDate(date: String): String = runCatching {
+    LocalDate.parse(date).format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault()))
+}.getOrDefault(date)
 
 @Composable
 internal fun TextButtonBack(onBack: () -> Unit) { IconButton(onClick = onBack) { Text("‹", style = MaterialTheme.typography.headlineLarge) } }
