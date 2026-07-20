@@ -3,24 +3,29 @@ package com.example.pluck.ui.components
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -32,6 +37,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -44,13 +50,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarArrangement
+import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -59,13 +71,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Stable
+import kotlinx.coroutines.flow.collect
 
 enum class MainDestination(val label: String, val route: String, val icon: ImageVector) {
     HOME("Home", "home", Icons.Rounded.Home),
@@ -74,11 +90,45 @@ enum class MainDestination(val label: String, val route: String, val icon: Image
     SETTINGS("Settings", "settings", Icons.Rounded.Settings)
 }
 
+/**
+ * Hoisted visibility controller for Pluck's primary navigation.
+ *
+ * A bar only retreats after a deliberate downward scroll. It returns as soon as the user reverses
+ * direction, which keeps the primary destinations reliably reachable without visual flicker.
+ */
+@Stable
 class FloatingBarState(initiallyVisible: Boolean = true) {
     var visible by mutableStateOf(initiallyVisible)
+        private set
+
+    private var downwardDistancePx = 0f
+
+    fun show() {
+        downwardDistancePx = 0f
+        visible = true
+    }
+
+    fun hide() {
+        downwardDistancePx = 0f
+        visible = false
+    }
+
+    fun updateForScroll(deltaPx: Int, hideThresholdPx: Float) {
+        when {
+            deltaPx > 0 -> {
+                downwardDistancePx += deltaPx
+                if (downwardDistancePx >= hideThresholdPx) visible = false
+            }
+
+            deltaPx < 0 -> show()
+        }
+    }
 }
 
 val LocalFloatingBarState = staticCompositionLocalOf<FloatingBarState> { error("FloatingBarState is not provided") }
+
+/** Bottom clearance for tappable content when the app-level floating navigation is present. */
+val LocalFloatingNavigationBarClearance = staticCompositionLocalOf { 0.dp }
 
 /** A neutral application canvas used by all destinations. */
 @Composable
@@ -99,51 +149,173 @@ private fun glassBorder() = BorderStroke(
     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.11f)
 )
 
+/**
+ * A floating Material 3 Expressive short navigation bar.
+ *
+ * [ShortNavigationBar] provides the current Material selection indicator and label motion while
+ * this wrapper supplies Pluck's opaque tonal floating surface and directional entrance motion.
+ */
 @Composable
-fun FloatingNavigationBar(selected: MainDestination, onDestinationSelected: (MainDestination) -> Unit, visible: Boolean, modifier: Modifier = Modifier) {
+fun FloatingNavigationBar(
+    selected: MainDestination,
+    onDestinationSelected: (MainDestination) -> Unit,
+    visible: Boolean,
+    modifier: Modifier = Modifier
+) {
     val haptics = rememberPluckHaptics()
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(220)) + expandVertically(expandFrom = Alignment.Bottom),
-        exit = fadeOut(tween(160)) + shrinkVertically(shrinkTowards = Alignment.Bottom),
+        enter = fadeIn(animationSpec = tween(180)) +
+            slideInVertically(
+                initialOffsetY = { it / 2 },
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ) +
+            scaleIn(
+                initialScale = 0.92f,
+                transformOrigin = TransformOrigin(0.5f, 1f),
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ),
+        exit = fadeOut(animationSpec = tween(120)) +
+            slideOutVertically(
+                targetOffsetY = { it / 2 },
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ) +
+            scaleOut(
+                targetScale = 0.94f,
+                transformOrigin = TransformOrigin(0.5f, 1f),
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ),
         modifier = modifier
     ) {
-        Surface(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            border = glassBorder(),
-            tonalElevation = 4.dp,
-            shadowElevation = 8.dp
+                .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
-            Row(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                MainDestination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = selected == destination,
-                        onClick = {
-                            if (destination != selected) {
-                                haptics.perform(PluckHapticEvent.Navigation)
-                                onDestinationSelected(destination)
-                            }
-                        },
-                        icon = { Icon(destination.icon, contentDescription = destination.label) },
-                        label = null,
-                        alwaysShowLabel = false,
-                        colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            val arrangement = if (maxWidth >= 600.dp) {
+                ShortNavigationBarArrangement.Centered
+            } else {
+                ShortNavigationBarArrangement.EqualWeight
+            }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 720.dp)
+                    .align(Alignment.Center),
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                border = glassBorder(),
+                tonalElevation = 3.dp,
+                shadowElevation = 10.dp
+            ) {
+                ShortNavigationBar(
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    arrangement = arrangement
+                ) {
+                    val itemColors = ShortNavigationBarItemDefaults.colors(
+                        selectedIndicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    // Keeping an explicit weighted row makes all four primary destinations
+                    // deterministic even when a launcher reports an unusually narrow width.
+                    Row(Modifier.fillMaxWidth()) {
+                        MainDestination.entries.forEach { destination ->
+                            ShortNavigationBarItem(
+                                selected = selected == destination,
+                                onClick = {
+                                    if (destination != selected) {
+                                        haptics.perform(PluckHapticEvent.Navigation)
+                                        onDestinationSelected(destination)
+                                    }
+                                },
+                                icon = { Icon(destination.icon, contentDescription = null) },
+                                label = { Text(destination.label, maxLines = 1) },
+                                modifier = Modifier.weight(1f),
+                                colors = itemColors
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
+
+/** Connects a [LazyListState] to the shared direction-aware floating navigation behavior. */
+@Composable
+fun ObserveFloatingNavigationScroll(listState: LazyListState) {
+    val floatingBar = LocalFloatingBarState.current
+    val density = LocalDensity.current
+    val hideThresholdPx = remember(density) { with(density) { 24.dp.toPx() } }
+    DisposableEffect(floatingBar) {
+        onDispose { floatingBar.show() }
+    }
+    LaunchedEffect(listState, floatingBar, hideThresholdPx) {
+        var previousPosition = listState.scrollPosition()
+        snapshotFlow {
+            ScrollObservation(
+                position = listState.scrollPosition(),
+                inProgress = listState.isScrollInProgress
+            )
+        }.collect { observation ->
+            val delta = (observation.position - previousPosition)
+                .coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong())
+                .toInt()
+            previousPosition = observation.position
+            if (observation.inProgress) {
+                floatingBar.updateForScroll(delta, hideThresholdPx)
+            }
+        }
+    }
+}
+
+/** Connects a regular [ScrollState] to the shared direction-aware floating navigation behavior. */
+@Composable
+fun ObserveFloatingNavigationScroll(scrollState: ScrollState) {
+    val floatingBar = LocalFloatingBarState.current
+    val density = LocalDensity.current
+    val hideThresholdPx = remember(density) { with(density) { 24.dp.toPx() } }
+    DisposableEffect(floatingBar) {
+        onDispose { floatingBar.show() }
+    }
+    LaunchedEffect(scrollState, floatingBar, hideThresholdPx) {
+        var previousPosition = scrollState.value.toLong()
+        snapshotFlow { ScrollObservation(scrollState.value.toLong(), scrollState.isScrollInProgress) }
+            .collect { observation ->
+                val delta = (observation.position - previousPosition)
+                    .coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong())
+                    .toInt()
+                previousPosition = observation.position
+                if (observation.inProgress) {
+                    floatingBar.updateForScroll(delta, hideThresholdPx)
+                }
+            }
+    }
+}
+
+private data class ScrollObservation(val position: Long, val inProgress: Boolean)
+
+private fun LazyListState.scrollPosition(): Long =
+    firstVisibleItemIndex.toLong() * 1_000_000L + firstVisibleItemScrollOffset
 
 @Composable
 fun ExpressiveCard(onClick: (() -> Unit)? = null, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {

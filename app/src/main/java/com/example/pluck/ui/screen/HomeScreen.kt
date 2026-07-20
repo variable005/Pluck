@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.pluck.ui.components.AnimatedPrimaryButton
 import com.example.pluck.ui.components.ExpressiveCard
+import com.example.pluck.ui.components.LocalFloatingNavigationBarClearance
+import com.example.pluck.ui.components.ObserveFloatingNavigationScroll
 import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.HomeViewModel
 
@@ -45,6 +47,10 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val hasJourney = state.journey != null
+    val scrollState = rememberScrollState()
+    val floatingBarClearance = LocalFloatingNavigationBarClearance.current
+
+    ObserveFloatingNavigationScroll(scrollState)
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -53,8 +59,8 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = 124.dp),
+                .verticalScroll(scrollState)
+                .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = floatingBarClearance + 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             HomeHeader(onSettings)

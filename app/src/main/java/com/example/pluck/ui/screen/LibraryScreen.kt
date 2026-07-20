@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.AutoStories
@@ -53,6 +54,8 @@ import com.example.pluck.domain.model.JourneyLibraryItem
 import com.example.pluck.ui.components.EmptyState
 import com.example.pluck.ui.components.ExpressiveCard
 import com.example.pluck.ui.components.LoadingView
+import com.example.pluck.ui.components.LocalFloatingNavigationBarClearance
+import com.example.pluck.ui.components.ObserveFloatingNavigationScroll
 import com.example.pluck.ui.components.PluckTopAppBar
 import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.LibraryViewModel
@@ -124,13 +127,17 @@ private fun JourneyLibrary(
 ) {
     var grouping by rememberSaveable { mutableStateOf(LibraryGrouping.WEEK) }
     val sections = remember(journeys, grouping) { journeys.groupedBy(grouping) }
+    val listState = rememberLazyListState()
+    val floatingBarClearance = LocalFloatingNavigationBarClearance.current
+    ObserveFloatingNavigationScroll(listState)
     Box(modifier) {
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .widthIn(max = 760.dp)
                 .fillMaxSize()
                 .align(Alignment.TopCenter),
-            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = floatingBarClearance + 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(key = "library_heading") {

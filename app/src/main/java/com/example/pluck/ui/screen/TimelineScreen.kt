@@ -39,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +56,10 @@ import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.ui.components.AnimatedPrimaryButton
 import com.example.pluck.ui.components.EmptyState
 import com.example.pluck.ui.components.ExpressiveCard
+import com.example.pluck.ui.components.LocalFloatingNavigationBarClearance
+import com.example.pluck.ui.components.ObserveFloatingNavigationScroll
 import com.example.pluck.ui.components.PluckHapticEvent
 import com.example.pluck.ui.components.PluckTopAppBar
-import com.example.pluck.ui.components.LocalFloatingBarState
 import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.ui.components.rememberPluckHaptics
 import com.example.pluck.viewmodel.TimelineViewModel
@@ -77,13 +77,14 @@ fun TimelineScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
-    val floatingBar = LocalFloatingBarState.current
+    val floatingBarClearance = LocalFloatingNavigationBarClearance.current
     val haptics = rememberPluckHaptics()
     val journey = state.journey
     // The normal route only represents today's active journey. While Room is loading it,
     // keep that route actionable instead of briefly presenting an archive empty state.
     val canAddPlaces = !readOnly && (journey == null || journey.date == LocalDate.now().toString())
-    LaunchedEffect(listState.isScrollInProgress) { floatingBar.visible = !listState.isScrollInProgress }
+    val hasStoryAction = state.story != null || state.photos.size >= 2
+    if (!readOnly) ObserveFloatingNavigationScroll(listState)
     Scaffold(
         topBar = {
             PluckTopAppBar(
@@ -109,10 +110,10 @@ fun TimelineScreen(
             }
         },
         bottomBar = {
-            AnimatedVisibility(state.story != null || state.photos.size >= 2, enter = fadeIn() + slideInVertically { it / 2 }) {
-                // The app-level navigation floats above this bar, so reserve just enough
-                // space for both controls without giving the screen a cropped bottom edge.
-                Column(Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 88.dp)) {
+            AnimatedVisibility(hasStoryAction, enter = fadeIn() + slideInVertically { it / 2 }) {
+                // The app-level navigation floats above this action, so root-provided clearance
+                // keeps both controls comfortably reachable under gesture navigation.
+                Column(Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = floatingBarClearance)) {
                     AnimatedPrimaryButton(
                         text = if (state.story == null) "Generate your story" else "Read your story",
                         onClick = { onStory(viewModel.journeyId) },
@@ -130,13 +131,21 @@ fun TimelineScreen(
                 body = if (canAddPlaces) "Capture one photo at each place you visit. Pluck will hold the sequence for later." else "This journey did not keep any captured places.",
                 action = if (canAddPlaces) "Capture first place" else "Back to library",
                 onAction = if (canAddPlaces) ({ onCapture(viewModel.journeyId) }) else onBack,
-                modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = floatingBarClearance + 24.dp)
             )
         } else {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 200.dp),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 8.dp,
+                    bottom = if (hasStoryAction) 24.dp else floatingBarClearance + 24.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 stickyHeader {

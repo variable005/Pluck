@@ -6,7 +6,10 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
@@ -19,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -31,6 +35,7 @@ import com.example.pluck.ui.components.FloatingNavigationBar
 import com.example.pluck.ui.components.MainDestination
 import com.example.pluck.ui.components.FloatingBarState
 import com.example.pluck.ui.components.LocalFloatingBarState
+import com.example.pluck.ui.components.LocalFloatingNavigationBarClearance
 import com.example.pluck.ui.components.LocalHapticMode
 import com.example.pluck.ui.components.LiquidGlassBackdrop
 import com.example.pluck.ui.screen.CaptureScreen
@@ -60,16 +65,24 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
     val selected = when {
         route.startsWith("library") -> MainDestination.LIBRARY
         route.startsWith("timeline") || route == "journey" -> MainDestination.JOURNEY
-        route == "settings" -> MainDestination.SETTINGS
+        route == "settings" || route == "local-ai" -> MainDestination.SETTINGS
         else -> MainDestination.HOME
     }
-    val barVisible = route !in setOf("onboarding", "capture/{$JOURNEY_ID}", "story/{$JOURNEY_ID}")
+    val barVisible = route.isNotBlank() &&
+        route !in setOf("onboarding", "capture/{$JOURNEY_ID}", "story/{$JOURNEY_ID}", "local-ai") &&
+        !route.startsWith("library/timeline/")
     val floatingBarState = remember { FloatingBarState() }
+    val systemBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // The short navigation bar itself is 64dp; this reserves its visual height, breathing room,
+    // and the gesture area once at the app root rather than asking each screen to guess.
+    val floatingBarClearance = if (barVisible) systemBottomInset + 88.dp else systemBottomInset
     var onboardingResolved by rememberSaveable { mutableStateOf(false) }
     var pendingCaptureRequest by rememberSaveable { mutableLongStateOf(0L) }
     var handledCaptureRequest by rememberSaveable { mutableLongStateOf(0L) }
 
-    LaunchedEffect(route) { floatingBarState.visible = barVisible }
+    LaunchedEffect(route, barVisible) {
+        if (barVisible) floatingBarState.show() else floatingBarState.hide()
+    }
     LaunchedEffect(route) {
         // Restored tasks do not revisit the onboarding composable, so treat any other route as
         // resolved before honoring an external widget request.
@@ -105,6 +118,7 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
     }
     CompositionLocalProvider(
         LocalFloatingBarState provides floatingBarState,
+        LocalFloatingNavigationBarClearance provides floatingBarClearance,
         LocalHapticMode provides hapticMode
     ) {
     LiquidGlassBackdrop(Modifier.fillMaxSize()) {

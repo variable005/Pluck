@@ -50,6 +50,8 @@ import com.example.pluck.domain.model.HapticMode
 import com.example.pluck.domain.model.ThemeMode
 import com.example.pluck.ui.components.AnimatedPrimaryButton
 import com.example.pluck.ui.components.ExpressiveCard
+import com.example.pluck.ui.components.LocalFloatingNavigationBarClearance
+import com.example.pluck.ui.components.ObserveFloatingNavigationScroll
 import com.example.pluck.ui.components.PluckTopAppBar
 import com.example.pluck.ui.components.StatusPill
 import com.example.pluck.viewmodel.SettingsViewModel
@@ -57,9 +59,12 @@ import com.example.pluck.viewmodel.SettingsViewModel
 @Composable
 fun SettingsScreen(onBack: () -> Unit, onLocalAi: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val scrollState = rememberScrollState()
+    val floatingBarClearance = LocalFloatingNavigationBarClearance.current
+    ObserveFloatingNavigationScroll(scrollState)
     Column(Modifier.fillMaxSize()) {
         PluckTopAppBar("Settings", "Your keys stay on this device", onBack)
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Appearance", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 12.dp))
             AppearanceCard(
                 selected = state.themeMode,
@@ -85,7 +90,7 @@ fun SettingsScreen(onBack: () -> Unit, onLocalAi: () -> Unit, viewModel: Setting
             AiProvider.entries.filter { it.requiresApiKey }.forEach { provider ->
                 ApiKeyCard(provider, state.keys[provider].orEmpty(), selected = state.provider == provider, testing = state.testing == provider, result = state.result?.takeIf { it.first == provider }?.second, onValueChange = { viewModel.updateKey(provider, it) }, onSave = { viewModel.saveKey(provider) }, onTest = { viewModel.test(provider) })
             }
-            ExpressiveCard(onClick = onLocalAi, modifier = Modifier.fillMaxWidth().padding(bottom = 120.dp)) {
+            ExpressiveCard(onClick = onLocalAi, modifier = Modifier.fillMaxWidth().padding(bottom = floatingBarClearance + 24.dp)) {
                 Column(Modifier.padding(20.dp)) {
                     Text("Local AI", style = MaterialTheme.typography.titleMedium)
                     Text("Download Google’s verified on-device model once, then create stories without uploading photos or prompts.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
