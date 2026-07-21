@@ -1,6 +1,8 @@
 # Pluck
 
-![Pluck](Pluck.png)
+<p align="center">
+  <img src="Pluck.png" alt="Pluck" width="100%" />
+</p>
 
 **Real places. Entirely fictional stories.**
 
@@ -8,30 +10,147 @@ Pluck is a local-first Android app for turning a day of captured places into one
 
 There is no AI chat interface, no account, no advertising, no analytics, and no Pluck backend.
 
-## Demo
+## App Showcase
 
-<p align="center">
-  <a href="demo/Screenshot_20260721_175752_Pluck.png"><img src="demo/Screenshot_20260721_175752_Pluck.png" alt="Pluck home screen" width="22%" /></a>
-  <a href="demo/Screenshot_20260721_175756_Pluck.png"><img src="demo/Screenshot_20260721_175756_Pluck.png" alt="An empty journey" width="22%" /></a>
-  <a href="demo/Screenshot_20260721_232747_Pluck.png"><img src="demo/Screenshot_20260721_232747_Pluck.png" alt="A journey in progress" width="22%" /></a>
-  <a href="demo/Screenshot_20260721_232947_Pluck.png"><img src="demo/Screenshot_20260721_232947_Pluck.png" alt="A journey ready for story generation" width="22%" /></a>
-</p>
+### Journey Creation & Story Setup
 
-<p align="center">
-  <a href="demo/Screenshot_20260721_175801_Pluck.png"><img src="demo/Screenshot_20260721_175801_Pluck.png" alt="Saved stories library" width="22%" /></a>
-  <a href="demo/Screenshot_20260721_233005_Pluck.png"><img src="demo/Screenshot_20260721_233005_Pluck.png" alt="Saved journey timeline" width="22%" /></a>
-  <a href="demo/Screenshot_20260721_175823_Pluck.png"><img src="demo/Screenshot_20260721_175823_Pluck.png" alt="Secure provider key settings" width="22%" /></a>
-  <a href="demo/Screenshot_20260721_175905_Pluck.png"><img src="demo/Screenshot_20260721_175905_Pluck.png" alt="Local Gemma readiness" width="22%" /></a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_175752_Pluck.png">
+        <img src="demo/Screenshot_20260721_175752_Pluck.png" alt="Pluck Home Screen" width="100%" />
+      </a>
+      <br />
+      <sub><b>Home Screen</b><br />Start journey or try demo</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_175756_Pluck.png">
+        <img src="demo/Screenshot_20260721_175756_Pluck.png" alt="Empty Journey" width="100%" />
+      </a>
+      <br />
+      <sub><b>Empty Journey</b><br />Ready for photo captures</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_232747_Pluck.png">
+        <img src="demo/Screenshot_20260721_232747_Pluck.png" alt="Journey in Progress" width="100%" />
+      </a>
+      <br />
+      <sub><b>Journey Progress</b><br />Capturing stops along the day</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_232947_Pluck.png">
+        <img src="demo/Screenshot_20260721_232947_Pluck.png" alt="Story Generation Setup" width="100%" />
+      </a>
+      <br />
+      <sub><b>Story Setup</b><br />Mood selection & creative prompt</sub>
+    </td>
+  </tr>
+</table>
 
-<p align="center">
-  <a href="demo/Screenshot_20260722_003209_Pluck.png"><img src="demo/Screenshot_20260722_003209_Pluck.png" alt="Reality versus Fiction story reader" width="22%" /></a>
-  <a href="demo/Screenshot_20260722_003250_Pluck.png"><img src="demo/Screenshot_20260722_003250_Pluck.png" alt="Private story sharing options" width="22%" /></a>
-  <a href="demo/Screenshot_20260722_003252_Pluck.png"><img src="demo/Screenshot_20260722_003252_Pluck.png" alt="Story save and export options" width="22%" /></a>
-  <a href="demo/Screenshot_20260722_003304_IntentResolver.png"><img src="demo/Screenshot_20260722_003304_IntentResolver.png" alt="Android share target chooser for a Pluck story card" width="22%" /></a>
-</p>
+### Reading & Interactive Timelines
 
-More detailed captures: [full settings](demo/Screenshot_20260721_175806_Pluck.png), [20-place journey timeline](demo/Screenshot_20260721_175833_Pluck.png), [journey-ready state](demo/Screenshot_20260721_232821_Pluck.png), and [current settings view](demo/Screenshot_20260721_232850_Pluck.png).
+<table align="center">
+  <tr>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260722_003209_Pluck.png">
+        <img src="demo/Screenshot_20260722_003209_Pluck.png" alt="Story Reader" width="100%" />
+      </a>
+      <br />
+      <sub><b>Story Reader</b><br />Reality vs Fiction scene sync</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_175801_Pluck.png">
+        <img src="demo/Screenshot_20260721_175801_Pluck.png" alt="Saved Stories Library" width="100%" />
+      </a>
+      <br />
+      <sub><b>Stories Library</b><br />Saved stories & novella arcs</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_233005_Pluck.png">
+        <img src="demo/Screenshot_20260721_233005_Pluck.png" alt="Saved Journey Timeline" width="100%" />
+      </a>
+      <br />
+      <sub><b>Journey Timeline</b><br />Timeline with route sketch</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_175833_Pluck.png">
+        <img src="demo/Screenshot_20260721_175833_Pluck.png" alt="20-Stop Demo Timeline" width="100%" />
+      </a>
+      <br />
+      <sub><b>20-Stop Demo</b><br />Rich multi-place timeline</sub>
+    </td>
+  </tr>
+</table>
+
+### Export, Sharing & Native Integration
+
+<table align="center">
+  <tr>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260722_003250_Pluck.png">
+        <img src="demo/Screenshot_20260722_003250_Pluck.png" alt="Story Share Card" width="100%" />
+      </a>
+      <br />
+      <sub><b>Share Cards</b><br />Private social story cards</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260722_003252_Pluck.png">
+        <img src="demo/Screenshot_20260722_003252_Pluck.png" alt="PDF & EPUB Export" width="100%" />
+      </a>
+      <br />
+      <sub><b>Book Export</b><br />PDF & EPUB compilation</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_232821_Pluck.png">
+        <img src="demo/Screenshot_20260721_232821_Pluck.png" alt="Journey Ready State" width="100%" />
+      </a>
+      <br />
+      <sub><b>Journey Ready</b><br />All stops captured & ready</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260722_003304_IntentResolver.png">
+        <img src="demo/Screenshot_20260722_003304_IntentResolver.png" alt="Android Share Target" width="100%" />
+      </a>
+      <br />
+      <sub><b>Android Share Sheet</b><br />Direct system share targets</sub>
+    </td>
+  </tr>
+</table>
+
+### Local-First AI & Security Settings
+
+<table align="center">
+  <tr>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_175905_Pluck.png">
+        <img src="demo/Screenshot_20260721_175905_Pluck.png" alt="Local Gemma Setup" width="100%" />
+      </a>
+      <br />
+      <sub><b>Local Gemma 4</b><br />On-device LLM readiness</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_175823_Pluck.png">
+        <img src="demo/Screenshot_20260721_175823_Pluck.png" alt="Cloud Provider Keys" width="100%" />
+      </a>
+      <br />
+      <sub><b>Secure Keys</b><br />Keystore-backed API keys</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_232850_Pluck.png">
+        <img src="demo/Screenshot_20260721_232850_Pluck.png" alt="Provider Selection" width="100%" />
+      </a>
+      <br />
+      <sub><b>Provider Settings</b><br />Cloud & Local selection</sub>
+    </td>
+    <td align="center" width="25%">
+      <a href="demo/Screenshot_20260721_175806_Pluck.png">
+        <img src="demo/Screenshot_20260721_175806_Pluck.png" alt="App Preferences" width="100%" />
+      </a>
+      <br />
+      <sub><b>App Preferences</b><br />Theming, dynamic color & haptics</sub>
+    </td>
+  </tr>
+</table>
 
 ## Built with Codex
 
