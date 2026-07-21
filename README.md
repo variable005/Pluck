@@ -24,6 +24,13 @@ There is no AI chat interface, no account, no advertising, no analytics, and no 
   <a href="demo/Screenshot_20260721_175905_Pluck.png"><img src="demo/Screenshot_20260721_175905_Pluck.png" alt="Local Gemma readiness" width="22%" /></a>
 </p>
 
+<p align="center">
+  <a href="demo/Screenshot_20260722_003209_Pluck.png"><img src="demo/Screenshot_20260722_003209_Pluck.png" alt="Reality versus Fiction story reader" width="22%" /></a>
+  <a href="demo/Screenshot_20260722_003250_Pluck.png"><img src="demo/Screenshot_20260722_003250_Pluck.png" alt="Private story sharing options" width="22%" /></a>
+  <a href="demo/Screenshot_20260722_003252_Pluck.png"><img src="demo/Screenshot_20260722_003252_Pluck.png" alt="Story save and export options" width="22%" /></a>
+  <a href="demo/Screenshot_20260722_003304_IntentResolver.png"><img src="demo/Screenshot_20260722_003304_IntentResolver.png" alt="Android share target chooser for a Pluck story card" width="22%" /></a>
+</p>
+
 More detailed captures: [full settings](demo/Screenshot_20260721_175806_Pluck.png), [20-place journey timeline](demo/Screenshot_20260721_175833_Pluck.png), [journey-ready state](demo/Screenshot_20260721_232821_Pluck.png), and [current settings view](demo/Screenshot_20260721_232850_Pluck.png).
 
 ## What you can do

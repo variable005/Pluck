@@ -324,7 +324,11 @@ class TimelineViewModel @Inject constructor(
     fun delete(photo: JourneyPhoto) = viewModelScope.launch { journeys.deletePhoto(photo) }
 }
 
-data class CaptureUiState(val saving: Boolean = false, val error: String? = null)
+data class CaptureUiState(
+    val saving: Boolean = false,
+    val savingLabel: String = "Saving this place…",
+    val error: String? = null
+)
 
 @HiltViewModel
 class CaptureViewModel @Inject constructor(
@@ -338,7 +342,7 @@ class CaptureViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
     fun outputFile(): File = photoStore.newPhotoFile()
     fun save(file: File, hasLocationPermission: Boolean, onSaved: () -> Unit) = viewModelScope.launch {
-        _uiState.value = CaptureUiState(saving = true)
+        _uiState.value = CaptureUiState(saving = true, savingLabel = "Saving this place…")
         runCatching {
             val location = if (hasLocationPermission) locations.current() else null
             journeys.addPhoto(journeyId, file.absolutePath, System.currentTimeMillis(), location?.latitude, location?.longitude, location?.address)
@@ -350,6 +354,66 @@ class CaptureViewModel @Inject constructor(
             _uiState.value = CaptureUiState(error = it.message ?: "Photo could not be saved.")
         }
     }
+
+    /**
+     * Imports selected images in picker order. The timeline's timestamp is deliberately assigned
+     * at import time, rather than from EXIF, so a current journey keeps the sequence the user
+     * chose. Embedded GPS is retained as an optional place hint without treating the device's
+     * current location as the location of an older image.
+     */
+    fun importPhotos(uris: List<Uri>, onSaved: () -> Unit) = viewModelScope.launch {
+        val selection = uris.distinct()
+        if (selection.isEmpty()) return@launch
+
+        _uiState.value = CaptureUiState(
+            saving = true,
+            savingLabel = if (selection.size == 1) "Adding this place…" else "Adding ${selection.size} places…"
+        )
+        val startTimestamp = System.currentTimeMillis()
+        var importedCount = 0
+        withContext(Dispatchers.IO) {
+            selection.forEachIndexed { index, uri ->
+                runCatching {
+                    val imported = photoStore.importPhoto(uri)
+                    try {
+                        journeys.addPhoto(
+                            journeyId = journeyId,
+                            imagePath = imported.file.absolutePath,
+                            timestamp = startTimestamp + index,
+                            latitude = imported.latitude,
+                            longitude = imported.longitude,
+                            address = null
+                        )
+                    } catch (error: Throwable) {
+                        imported.file.delete()
+                        throw error
+                    }
+                }.onSuccess {
+                    importedCount++
+                }.onFailure { error ->
+                    if (error is CancellationException) throw error
+                }
+            }
+        }
+
+        when {
+            importedCount == selection.size -> {
+                _uiState.value = CaptureUiState()
+                onSaved()
+            }
+            importedCount == 0 -> {
+                _uiState.value = CaptureUiState(
+                    error = "No photos were added. Choose another image and try again."
+                )
+            }
+            else -> {
+                _uiState.value = CaptureUiState(
+                    error = "$importedCount of ${selection.size} photos were added. You can try the rest again."
+                )
+            }
+        }
+    }
+
     fun clearError() { _uiState.value = _uiState.value.copy(error = null) }
 }
 

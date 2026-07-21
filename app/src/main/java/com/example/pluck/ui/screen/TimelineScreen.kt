@@ -113,7 +113,10 @@ fun TimelineScreen(
     // The normal route only represents today's active journey. While Room is loading it,
     // keep that route actionable instead of briefly presenting an archive empty state.
     val canAddPlaces = !readOnly && (journey == null || journey.date == LocalDate.now().toString())
-    val showActionDock = (!readOnly && state.photos.isNotEmpty()) || (readOnly && state.story != null)
+    // Archived journeys are read-only for capture editing, not for storytelling. A saved
+    // sequence with two or more places can still open the normal mood/provider flow.
+    val showActionDock = (!readOnly && state.photos.isNotEmpty()) ||
+        (readOnly && (state.story != null || state.photos.size >= 2))
     val hasPrivateRoute = remember(state.photos) { state.photos.toRoutePoints().size >= 2 }
     val showStickyPlacesHeader by remember(hasPrivateRoute) {
         derivedStateOf {

@@ -99,6 +99,7 @@ private data class LibrarySection(val label: String, val items: List<JourneyLibr
 fun LibraryScreen(
     onOpenJourney: (Long) -> Unit,
     onOpenStory: (Long) -> Unit,
+    onGenerateStory: (Long) -> Unit,
     onStartJourney: () -> Unit,
     onCreateNovella: () -> Unit,
     onOpenNovella: (Long) -> Unit,
@@ -139,6 +140,10 @@ fun LibraryScreen(
                 export = state.export,
                 onOpenJourney = onOpenJourney,
                 onOpenStory = onOpenStory,
+                onGenerateStory = { journeyId ->
+                    haptics.perform(PluckHapticEvent.PrimaryAction)
+                    onGenerateStory(journeyId)
+                },
                 onCreateNovella = {
                     haptics.perform(PluckHapticEvent.PrimaryAction)
                     onCreateNovella()
@@ -218,6 +223,7 @@ private fun JourneyLibrary(
     export: BookExportUiState,
     onOpenJourney: (Long) -> Unit,
     onOpenStory: (Long) -> Unit,
+    onGenerateStory: (Long) -> Unit,
     onCreateNovella: () -> Unit,
     onOpenNovella: (Long) -> Unit,
     onShowMonthExport: () -> Unit,
@@ -321,6 +327,7 @@ private fun JourneyLibrary(
                                 if (journey.story != null) onOpenStory(journey.journey.id)
                                 else onOpenJourney(journey.journey.id)
                             },
+                            onGenerateStory = { onGenerateStory(journey.journey.id) },
                             onLongPress = { onManageJourney(journey) }
                         )
                     }
@@ -375,6 +382,7 @@ private fun LibraryQuickAction(
 private fun JourneyLibraryCard(
     item: JourneyLibraryItem,
     onOpen: () -> Unit,
+    onGenerateStory: () -> Unit,
     onLongPress: () -> Unit
 ) {
     val context = LocalContext.current
@@ -435,6 +443,23 @@ private fun JourneyLibraryCard(
                         modifier = Modifier.padding(start = 4.dp).size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+                if (story == null && item.photoCount >= 2) {
+                    FilledTonalButton(
+                        onClick = onGenerateStory,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = MaterialTheme.shapes.large,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Icon(Icons.Rounded.AutoStories, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Generate story")
+                    }
                 }
             }
         }

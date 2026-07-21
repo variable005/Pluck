@@ -235,6 +235,7 @@ fun PluckNavHost(
                 LibraryScreen(
                     onOpenJourney = { journeyId -> navController.navigate("library/timeline/$journeyId") },
                     onOpenStory = { journeyId -> navController.navigate("story/$journeyId") },
+                    onGenerateStory = { journeyId -> navController.navigate("story/$journeyId") },
                     onStartJourney = {
                         navController.navigate("journey") {
                             launchSingleTop = true
