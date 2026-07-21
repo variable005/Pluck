@@ -154,19 +154,19 @@ There is no AI chat interface, no account, no advertising, no analytics, and no 
 
 ## Built with Codex
 
-Pluck was designed and iterated in a sustained collaboration with **GPT-5.6 in Codex**. Codex was not used as a one-shot code generator: it worked alongside the builder through product decisions, UI critique, implementation, debugging, and verification, while the builder retained ownership of scope, privacy choices, and final UX direction.
+Pluck was designed and iterated in a sustained collaboration with **GPT-5.6 in Codex**. Codex was not used as a one-shot code generator: it worked alongside me through product decisions, UI critique, implementation, debugging, and verification, while I retained ownership of scope, privacy choices, and final UX direction.
 
 ### Where Codex accelerated the project
 
 - **Architecture and product shaping.** Starting from the idea of turning real places into fictional stories, Codex helped turn the concept into a local-first Android plan: Compose + Material 3, MVVM, Hilt, Room, CameraX, app-private media storage, and a provider abstraction that keeps cloud models and Local Gemma behind the same story-generation contract.
-- **Fast, intentional UI iteration.** The builder set the creative direction—minimal, expressive, native Android, no chat surface, dynamic theming, AMOLED support, haptics, and an emotionally calm reader. Codex translated feedback into reusable Compose components and repeatedly refined the Home, Journey, Library, Story Reader, Settings, loading, and navigation experiences.
+- **Fast, intentional UI iteration.** I set the creative direction—minimal, expressive, native Android, no chat surface, dynamic theming, AMOLED support, haptics, and an emotionally calm reader. Codex translated feedback into reusable Compose components and repeatedly refined the Home, Journey, Library, Story Reader, Settings, loading, and navigation experiences.
 - **Feature implementation.** Codex accelerated the work behind the polished surface: multi-provider story generation, Local Gemma readiness and model management, story revisions without chat, Reality vs Fiction reading, widgets, PDF/EPUB export, share cards, multi-day novella arcs, offline TTS, saved-journey generation, and gallery import.
 - **Engineering and debugging.** Codex traced build and runtime failures from Android Studio/Logcat output, including a stale JDK `jlink` configuration and a LiteRT-LM coroutine mismatch. It also verified builds after changes and kept new gallery photos private by normalizing them into app-owned JPEG files instead of relying on temporary picker URIs.
-- **Quality and privacy review.** The builder made the key trade-offs: no accounts, no Pluck backend, no ads or analytics, user-owned cloud API keys, and an optional offline Local Gemma path. Codex helped surface privacy implications around location metadata, cloud generation, exports, and model downloads so those choices could be explicit in the app and README.
+- **Quality and privacy review.** I made the key trade-offs: no accounts, no Pluck backend, no ads or analytics, user-owned cloud API keys, and an optional offline Local Gemma path. Codex helped surface privacy implications around location metadata, cloud generation, exports, and model downloads so those choices could be explicit in the app and README.
 
-### Human decisions, Codex leverage
+### Personal decisions, Codex leverage
 
-The builder chose what Pluck should feel like and what it should not become: a magical storytelling tool rather than a journal, travel log, or AI chat app. The builder reviewed real device results, supplied visual direction and screenshots, selected the final feature set, and decided the privacy boundaries. GPT-5.6 and Codex made the loop dramatically faster by preserving project context, inspecting the existing codebase before making changes, proposing focused implementations, applying those changes, and compiling the Android project to validate them.
+I chose what Pluck should feel like and what it should not become: a magical storytelling tool rather than a journal, travel log, or AI chat app. I reviewed real device results, supplied visual direction and screenshots, selected the final feature set, and decided the privacy boundaries. GPT-5.6 and Codex made the loop dramatically faster by preserving project context, inspecting the existing codebase before making changes, proposing focused implementations, applying those changes, and compiling the Android project to validate them.
 
 ## What you can do
 
