@@ -33,6 +33,22 @@ There is no AI chat interface, no account, no advertising, no analytics, and no 
 
 More detailed captures: [full settings](demo/Screenshot_20260721_175806_Pluck.png), [20-place journey timeline](demo/Screenshot_20260721_175833_Pluck.png), [journey-ready state](demo/Screenshot_20260721_232821_Pluck.png), and [current settings view](demo/Screenshot_20260721_232850_Pluck.png).
 
+## Built with Codex
+
+Pluck was designed and iterated in a sustained collaboration with **GPT-5.6 in Codex**. Codex was not used as a one-shot code generator: it worked alongside the builder through product decisions, UI critique, implementation, debugging, and verification, while the builder retained ownership of scope, privacy choices, and final UX direction.
+
+### Where Codex accelerated the project
+
+- **Architecture and product shaping.** Starting from the idea of turning real places into fictional stories, Codex helped turn the concept into a local-first Android plan: Compose + Material 3, MVVM, Hilt, Room, CameraX, app-private media storage, and a provider abstraction that keeps cloud models and Local Gemma behind the same story-generation contract.
+- **Fast, intentional UI iteration.** The builder set the creative direction—minimal, expressive, native Android, no chat surface, dynamic theming, AMOLED support, haptics, and an emotionally calm reader. Codex translated feedback into reusable Compose components and repeatedly refined the Home, Journey, Library, Story Reader, Settings, loading, and navigation experiences.
+- **Feature implementation.** Codex accelerated the work behind the polished surface: multi-provider story generation, Local Gemma readiness and model management, story revisions without chat, Reality vs Fiction reading, widgets, PDF/EPUB export, share cards, multi-day novella arcs, offline TTS, saved-journey generation, and gallery import.
+- **Engineering and debugging.** Codex traced build and runtime failures from Android Studio/Logcat output, including a stale JDK `jlink` configuration and a LiteRT-LM coroutine mismatch. It also verified builds after changes and kept new gallery photos private by normalizing them into app-owned JPEG files instead of relying on temporary picker URIs.
+- **Quality and privacy review.** The builder made the key trade-offs: no accounts, no Pluck backend, no ads or analytics, user-owned cloud API keys, and an optional offline Local Gemma path. Codex helped surface privacy implications around location metadata, cloud generation, exports, and model downloads so those choices could be explicit in the app and README.
+
+### Human decisions, Codex leverage
+
+The builder chose what Pluck should feel like and what it should not become: a magical storytelling tool rather than a journal, travel log, or AI chat app. The builder reviewed real device results, supplied visual direction and screenshots, selected the final feature set, and decided the privacy boundaries. GPT-5.6 and Codex made the loop dramatically faster by preserving project context, inspecting the existing codebase before making changes, proposing focused implementations, applying those changes, and compiling the Android project to validate them.
+
 ## What you can do
 
 - Capture a photo, timestamp, optional coordinates, and approximate address at each place.
@@ -60,6 +76,33 @@ More detailed captures: [full settings](demo/Screenshot_20260721_175806_Pluck.pn
 | Pluck account or server | Never used | Never used |
 
 When a cloud provider is selected, the ordered images and the story prompt (which can include time and location hints) are sent to that provider’s API. Choose Local Gemma when you want the complete generation path to stay on-device.
+
+## Minimum device requirements
+
+### Core app
+
+- **Android 7.0 / API 24 or later.**
+- A usable **rear camera** for in-app capture, or access to the system photo picker for building a journey from existing photos.
+- **Camera permission** is needed only for capturing inside Pluck. Gallery import does not request broad media-storage permission.
+- **Approximate location permission** is optional. It adds place hints, approximate addresses, and the private route sketch.
+- Enough free storage for captured photos, generated books, share cards, and saved stories. Core storage use grows with the number of photos and exports; Pluck does not impose a fixed core-storage threshold.
+- Internet is needed only for cloud story providers, provider connection tests, and the initial Local Gemma download. Existing journeys, story reading, local exports, and verified Local Gemma generation work offline.
+
+### Local Gemma (experimental)
+
+- A capable modern Android phone is recommended. Pluck is tuned and demonstrated on the **Samsung Galaxy S23**.
+- **4.5 GB of free private device storage** is enforced before installation. The verified Gemma 4 E2B download is approximately **2.58 GB**; remaining space allows safe installation and the LiteRT-LM runtime cache.
+- A stable internet connection is required once to download and verify the model. After verification, Local Gemma can generate stories without a connection.
+- Google estimates approximately **1.1 GB** of model memory for the Gemma 4 E2B mobile variant. This is a model-planning estimate, not a guarantee that every Android 7.0+ phone can run Pluck’s multimodal workload. [See Google’s Gemma 4 memory guidance.](https://ai.google.dev/gemma/docs/core)
+- GPU acceleration and LiteRT-LM support vary by device. Pluck does not claim a fixed RAM, chipset, or GPU minimum for Local Gemma; it remains optional and is not guaranteed on every supported Android device.
+- On a Galaxy S23, a typical four-place, 700–1,200-word story takes roughly **3–6 minutes**. More images, longer output, low battery, or a warm device can increase this time.
+- Start local generation with **30% battery or more**. For longer stories, connect power when possible and let a warm phone cool first.
+
+### Optional platform features
+
+- **Dynamic Material You colors:** Android 12+; Pluck falls back gracefully on older supported Android versions.
+- **Audiobook mode:** an installed Android text-to-speech engine with an offline voice for the selected language.
+- **Home-screen widgets:** a launcher that supports Android app widgets.
 
 ## Local Gemma
 
@@ -147,10 +190,10 @@ The UI is built with Jetpack Compose and Material 3. It supports dynamic color, 
 
 ## Build and run
 
-### Requirements
+### Development requirements
 
 - Android Studio with Android SDK 36 installed
-- JDK 11
+- Android Studio’s bundled JBR 21
 - Android 7.0 / API 24 or newer device or emulator
 - A physical Android device for CameraX, location, Local Gemma, widget, and TTS verification
 
