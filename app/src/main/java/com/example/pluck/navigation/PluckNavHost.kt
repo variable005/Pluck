@@ -224,7 +224,12 @@ fun PluckNavHost(
                     }
                 )
             }
-            composable("home") { HomeScreen(onJourney = { navController.navigate("timeline/$it") }) }
+            composable("home") {
+                HomeScreen(
+                    onJourney = { navController.navigate("timeline/$it") },
+                    onCreateDemoStory = { navController.navigate("story/$it") }
+                )
+            }
             composable("journey") { JourneyGateway(onJourney = { navController.navigate("timeline/$it") }) }
             composable("library") {
                 LibraryScreen(

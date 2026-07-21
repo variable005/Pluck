@@ -54,6 +54,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     onJourney: (Long) -> Unit,
+    onCreateDemoStory: (Long) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -101,11 +102,19 @@ fun HomeScreen(
                         hasJourney = hasJourney,
                         onJourney = { viewModel.start(onJourney) }
                     )
-                    TextButton(
-                        onClick = { viewModel.openDemo(onJourney) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Open demo journey")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        TextButton(
+                            onClick = { viewModel.openDemo(onJourney) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Explore the 20-photo demo journey")
+                        }
+                        TextButton(
+                            onClick = { viewModel.openDemo(onCreateDemoStory) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Create a story from demo photos")
+                        }
                     }
                 }
             }

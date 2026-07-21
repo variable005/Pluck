@@ -174,7 +174,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ### Hackathon demo journey
 
-The Home screen includes **Open demo journey · 20 original images**. It creates one local, asset-backed journey with twenty original illustrated places, fictional timestamps, synthetic route coordinates, and fictional addresses. It deliberately creates no `Story` record. Pick a provider and press Generate to demonstrate the actual live story pipeline without personal photos.
+The Home screen offers **Explore the 20-photo demo journey** and **Create a story from demo photos**. Both actions open the same local, asset-backed journey with twenty original illustrated places, fictional timestamps, synthetic route coordinates, and fictional addresses. It deliberately creates no `Story` record: the second action simply opens mood selection directly, so the selected provider still performs the live generation without personal photos.
 
 ## Technology
 

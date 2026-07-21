@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,6 +40,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddAPhoto
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material3.AlertDialog
@@ -591,12 +594,13 @@ private fun JourneyRouteCard(photos: List<JourneyPhoto>) {
     if (routePoints.size < 2) return
     val haptics = rememberPluckHaptics()
     var expanded by rememberSaveable(routePoints.size) { mutableStateOf(false) }
+    val toggleExpansion = {
+        haptics.perform(PluckHapticEvent.Navigation)
+        expanded = !expanded
+    }
 
     ExpressiveCard(
-        onClick = {
-            haptics.perform(PluckHapticEvent.Navigation)
-            expanded = !expanded
-        },
+        onClick = toggleExpansion,
         modifier = Modifier.animateContentSize()
     ) {
             Column(Modifier.padding(18.dp)) {
@@ -605,7 +609,10 @@ private fun JourneyRouteCard(photos: List<JourneyPhoto>) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Surface(
                             modifier = Modifier.size(44.dp),
                             shape = MaterialTheme.shapes.large,
@@ -619,16 +626,23 @@ private fun JourneyRouteCard(photos: List<JourneyPhoto>) {
                                 )
                             }
                         }
-                        Column(Modifier.padding(start = 12.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 12.dp)
+                        ) {
                             Text("Private route", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "${routePoints.size} located places · only on this device",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    StatusPill(if (expanded) "Collapse" else "Expand")
+                    Spacer(Modifier.width(8.dp))
+                    RouteExpandButton(expanded = expanded, onClick = toggleExpansion)
                 }
 
                 AnimatedContent(targetState = expanded, label = "routePreviewSize") { showFullRoute ->
@@ -658,6 +672,26 @@ private fun JourneyRouteCard(photos: List<JourneyPhoto>) {
                     }
                 }
         }
+    }
+}
+
+@Composable
+private fun RouteExpandButton(expanded: Boolean, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier
+            .widthIn(min = 116.dp)
+            .heightIn(min = 48.dp)
+    ) {
+        Text(
+            text = if (expanded) "Collapse" else "Expand",
+            maxLines = 1
+        )
+        Icon(
+            imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            contentDescription = null,
+            modifier = Modifier.padding(start = 4.dp)
+        )
     }
 }
 
