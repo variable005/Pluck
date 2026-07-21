@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_story_eyebrow">Latest story</string>
+    <string name="widget_story_untitled_title">Untitled story</string>
+    <string name="widget_story_empty_title">Your next story is waiting</string>
+    <string name="widget_story_empty_excerpt">Capture a few places, then turn the day into a fictional tale.</string>
+    <string name="widget_story_empty_date">No saved stories yet</string>
+    <string name="widget_story_open_app">Open Pluck</string>
+    <string name="widget_story_read_story">Read story</string>
+    <string name="widget_story_saved_on">Saved %1$s</string>
+    <string name="widget_story_content_description">Open latest Pluck story: %1$s</string>
+    <string name="widget_story_empty_content_description">Open Pluck to create a story</string>
+    <string name="widget_story_description">Read a short preview of your latest saved Pluck story</string>
+</resources>

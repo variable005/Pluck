@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_today_accent">#FFE4D7FF</color>
+    <color name="widget_today_badge_surface">#FF48405B</color>
+    <color name="widget_today_action">#FFE4D7FF</color>
+    <color name="widget_today_on_action">#FF33245A</color>
+
+    <string name="widget_today_title">Today’s journey</string>
+    <string name="widget_today_badge">Today</string>
+    <string name="widget_today_action">Capture a place</string>
+    <string name="widget_today_content_description">View today’s Pluck journey and capture the next place</string>
+    <string name="widget_today_description">See today’s captured places and quickly capture the next one</string>
+    <string name="widget_today_loading">Checking today…</string>
+    <string name="widget_today_loading_detail">Your journey will appear here shortly.</string>
+    <string name="widget_today_status_empty">Capture a place to begin today’s story.</string>
+    <string name="widget_today_status_one_place">One more place unlocks your story.</string>
+    <string name="widget_today_status_ready">Your journey is ready to become a story.</string>
+
+    <plurals name="widget_today_places_captured">
+        <item quantity="zero">No places captured</item>
+        <item quantity="one">%1$d place captured</item>
+        <item quantity="other">%1$d places captured</item>
+    </plurals>
+</resources>

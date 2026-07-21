@@ -58,7 +58,12 @@ private const val JOURNEY_ID = "journeyId"
 private const val ARC_ID = "arcId"
 
 @Composable
-fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
+fun PluckNavHost(
+    widgetCaptureRequest: Long = 0L,
+    widgetLibraryRequest: Long = 0L,
+    widgetStoryRequest: Long = 0L,
+    widgetStoryJourneyId: Long = -1L
+) {
     val navController = rememberNavController()
     val hapticSettings: HapticSettingsViewModel = hiltViewModel()
     val widgetCapture: WidgetCaptureViewModel = hiltViewModel()
@@ -83,6 +88,11 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
     var onboardingResolved by rememberSaveable { mutableStateOf(false) }
     var pendingCaptureRequest by rememberSaveable { mutableLongStateOf(0L) }
     var handledCaptureRequest by rememberSaveable { mutableLongStateOf(0L) }
+    var pendingLibraryRequest by rememberSaveable { mutableLongStateOf(0L) }
+    var handledLibraryRequest by rememberSaveable { mutableLongStateOf(0L) }
+    var pendingStoryRequest by rememberSaveable { mutableLongStateOf(0L) }
+    var pendingStoryJourneyId by rememberSaveable { mutableLongStateOf(-1L) }
+    var handledStoryRequest by rememberSaveable { mutableLongStateOf(0L) }
 
     LaunchedEffect(route, barVisible) {
         if (barVisible) floatingBarState.show() else floatingBarState.hide()
@@ -95,6 +105,21 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
     LaunchedEffect(widgetCaptureRequest) {
         if (widgetCaptureRequest != 0L && widgetCaptureRequest != handledCaptureRequest) {
             pendingCaptureRequest = widgetCaptureRequest
+        }
+    }
+    LaunchedEffect(widgetLibraryRequest) {
+        if (widgetLibraryRequest != 0L && widgetLibraryRequest != handledLibraryRequest) {
+            pendingLibraryRequest = widgetLibraryRequest
+        }
+    }
+    LaunchedEffect(widgetStoryRequest, widgetStoryJourneyId) {
+        if (
+            widgetStoryRequest != 0L &&
+            widgetStoryRequest != handledStoryRequest &&
+            widgetStoryJourneyId > 0L
+        ) {
+            pendingStoryRequest = widgetStoryRequest
+            pendingStoryJourneyId = widgetStoryJourneyId
         }
     }
     LaunchedEffect(pendingCaptureRequest, onboardingResolved, route) {
@@ -119,6 +144,45 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
             }
             navController.navigate("capture/$journeyId") { launchSingleTop = true }
         }
+    }
+    LaunchedEffect(pendingLibraryRequest, onboardingResolved, route) {
+        if (pendingLibraryRequest == 0L || !onboardingResolved) return@LaunchedEffect
+
+        if (route != "home") {
+            navController.navigate("home") {
+                popUpTo("home") { inclusive = false; saveState = false }
+                launchSingleTop = true
+            }
+            return@LaunchedEffect
+        }
+
+        val request = pendingLibraryRequest
+        pendingLibraryRequest = 0L
+        handledLibraryRequest = request
+        navController.navigate("library") { launchSingleTop = true }
+    }
+    LaunchedEffect(pendingStoryRequest, pendingStoryJourneyId, onboardingResolved, route) {
+        if (pendingStoryRequest == 0L || pendingStoryJourneyId <= 0L || !onboardingResolved) {
+            return@LaunchedEffect
+        }
+
+        if (route != "home" && route != "library") {
+            navController.navigate("home") {
+                popUpTo("home") { inclusive = false; saveState = false }
+                launchSingleTop = true
+            }
+            return@LaunchedEffect
+        }
+
+        val request = pendingStoryRequest
+        val journeyId = pendingStoryJourneyId
+        pendingStoryRequest = 0L
+        pendingStoryJourneyId = -1L
+        handledStoryRequest = request
+        if (route == "home") {
+            navController.navigate("library") { launchSingleTop = true }
+        }
+        navController.navigate("story/$journeyId") { launchSingleTop = true }
     }
     CompositionLocalProvider(
         LocalFloatingBarState provides floatingBarState,

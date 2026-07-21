@@ -1,6 +1,6 @@
 # Pluck
 
-![Pluck — a violet petal travelling through a day of places](repo-banner.png)
+![Pluck](Pluck.png)
 
 **Real places. Entirely fictional stories.**
 
@@ -21,7 +21,7 @@ There is no AI chat interface, no account, no advertising, no analytics, and no 
 - Group daily journeys into a continuing multi-day novella with a shared fictional world and continuity hand-off between chapters.
 - Export one story or a month of stories as a PDF book or EPUB, with selected photos, chapter headers, deterministic cover art, and a private route sketch.
 - Create local share cards in portrait, Instagram Story, or X/Twitter landscape formats. Shared images omit photo metadata.
-- Add the **Capture next place** widget to see Local Gemma readiness and start today’s capture flow.
+- Add one of Pluck’s private home-screen widgets: **Capture next place** for Local Gemma readiness and camera access, **Today’s journey** for a live capture count, or **Latest story** for a short reading preview. Widgets never show photos, addresses, or route data.
 - Open a bundled **20-place demo journey** made from original illustrations. It seeds images and fictional local metadata only—never a prewritten story—so generation remains live for presentations.
 
 ## Privacy at a glance
@@ -82,7 +82,7 @@ app/src/main/java/com/example/pluck/
 ├── ui/                 Compose screens, components, theme, share renderer
 ├── viewmodel/          Immutable StateFlow UI state
 ├── navigation/         Navigation Compose graph
-├── widget/             Capture-next-place app widget
+├── widget/             Capture, Today Journey, and Latest Story home-screen widgets
 └── di/                 Hilt bindings
 ```
 

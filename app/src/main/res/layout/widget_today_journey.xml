@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_today_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_today_background"
+    android:clickable="true"
+    android:contentDescription="@string/widget_today_content_description"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="16dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:letterSpacing="0.12"
+            android:text="@string/widget_brand"
+            android:textAllCaps="true"
+            android:textColor="@color/widget_on_surface_muted"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_today_day_badge"
+            android:gravity="center"
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:text="@string/widget_today_badge"
+            android:textAllCaps="true"
+            android:textColor="@color/widget_on_surface"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:text="@string/widget_today_title"
+        android:textColor="@color/widget_on_surface"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_today_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/widget_today_loading"
+        android:textColor="@color/widget_today_accent"
+        android:textSize="27sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_today_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:text="@string/widget_today_loading_detail"
+        android:textColor="@color/widget_on_surface_muted"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/widget_today_action"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_marginTop="13dp"
+        android:background="@drawable/widget_today_action_background"
+        android:clickable="true"
+        android:gravity="center"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:text="@string/widget_today_action"
+        android:textAllCaps="true"
+        android:textColor="@color/widget_today_on_action"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

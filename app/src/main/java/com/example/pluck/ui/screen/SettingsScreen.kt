@@ -251,7 +251,7 @@ private fun HapticModeCard(selected: HapticMode, onSelect: (HapticMode) -> Unit)
                 text = when (selected) {
                     HapticMode.OFF -> "No in-app touch feedback."
                     HapticMode.ESSENTIAL -> "Primary actions, camera capture, errors, and destructive actions only."
-                    HapticMode.FULL -> "Includes navigation and back actions as well."
+                    HapticMode.FULL -> "Includes navigation, back actions, and a subtle story-generation pulse."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

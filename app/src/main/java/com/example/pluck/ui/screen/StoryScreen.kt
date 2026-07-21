@@ -89,6 +89,8 @@ import com.example.pluck.domain.model.JourneyPhoto
 import com.example.pluck.domain.model.NovellaArc
 import com.example.pluck.domain.model.StoryCreativeSettings
 import com.example.pluck.ui.components.AnimatedPrimaryButton
+import com.example.pluck.ui.components.NavLoadingPetal
+import com.example.pluck.ui.components.PetalConvergenceProgress
 import com.example.pluck.ui.components.PluckHapticEvent
 import com.example.pluck.ui.components.PluckTopAppBar
 import com.example.pluck.ui.components.rememberPluckHaptics
@@ -103,6 +105,7 @@ import com.example.pluck.viewmodel.StoryViewModel
 import java.io.File
 import java.util.Date
 import kotlin.math.ceil
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val ReaderMaxWidth = 720.dp
@@ -262,8 +265,9 @@ fun StoryScreen(onBack: () -> Unit, viewModel: StoryViewModel = hiltViewModel())
 @Composable
 private fun StoryGenerationLoading(onBack: () -> Unit) {
     var visible by rememberSaveable { mutableStateOf(false) }
+    val haptics = rememberPluckHaptics()
     LaunchedEffect(Unit) { visible = true }
-    Scaffold(topBar = { PluckTopAppBar("Creating your story", onBack = onBack) }) { innerPadding ->
+    Scaffold(topBar = { PluckTopAppBar(title = null, onBack = onBack) }) { innerPadding ->
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -274,66 +278,89 @@ private fun StoryGenerationLoading(onBack: () -> Unit) {
                 visible = visible,
                 enter = fadeIn(tween(450)) + scaleIn(initialScale = 0.94f, animationSpec = tween(450, easing = FastOutSlowInEasing))
             ) {
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = 440.dp)
-                        .padding(horizontal = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Surface(
-                        modifier = Modifier.size(112.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        tonalElevation = 2.dp
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.AutoStories,
-                                contentDescription = null,
-                                modifier = Modifier.size(52.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(28.dp))
-                    Text(
-                        text = "Turning today into a world of its own",
-                        style = MaterialTheme.typography.headlineLarge,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "Following the thread between every place you chose.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(28.dp))
-                    StoryLoadingLine()
-                }
+                PetalConvergenceProgress(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp),
+                    onFirstConvergence = { haptics.perform(PluckHapticEvent.GenerationPulse) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun StoryLoadingLine() {
-    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "storyLoading")
-    val progress by transition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.82f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = tween(1_250, easing = FastOutSlowInEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-        ),
-        label = "storyLoadingProgress"
-    )
-    LinearProgressIndicator(
-        progress = { progress },
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.primary,
-        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-    )
+private fun StoryGenerationStatus(compact: Boolean = false, modifier: Modifier = Modifier) {
+    var percentage by remember { mutableStateOf(4) }
+    LaunchedEffect(Unit) {
+        while (percentage < 94) {
+            delay(
+                when {
+                    percentage < 48 -> 450L
+                    percentage < 78 -> 700L
+                    else -> 1_200L
+                }
+            )
+            percentage += when {
+                percentage < 48 -> 2
+                percentage < 78 -> 1
+                else -> 1
+            }
+        }
+    }
+    val stage = when {
+        percentage < 18 -> "Preparing your places"
+        percentage < 54 -> "Generating the story"
+        percentage < 82 -> "Keeping the details connected"
+        else -> "Proofreading the final draft"
+    }
+
+    if (compact) {
+        Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$percentage%",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Column(modifier = Modifier.padding(start = 12.dp)) {
+                Text("Estimated progress", style = MaterialTheme.typography.labelLarge)
+                Text(stage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    } else {
+        Surface(
+            modifier = modifier,
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            tonalElevation = 1.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "$percentage%",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stage,
+                    modifier = Modifier.padding(top = 2.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "Estimated progress",
+                    modifier = Modifier.padding(top = 4.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -862,6 +889,14 @@ private fun StoryReader(
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         )
 
+        NavLoadingPetal(
+            visible = isRefreshing,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = ReaderActionDockHeight + 16.dp)
+        )
+
         if (showVariationOptions) {
             StoryVariationDialog(
                 currentMood = mood,
@@ -1080,23 +1115,18 @@ private fun StoryRegeneratingNotice(modifier: Modifier = Modifier) {
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.primaryContainer
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.AutoStories,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Text("Writing a new version", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(
+                "Your current story stays here until the next one is ready.",
+                modifier = Modifier.padding(top = 2.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f)
             )
-            Column(modifier = Modifier.padding(start = 12.dp)) {
-                Text("Writing a new version", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text(
-                    "Your current story stays here until the next one is ready.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f)
-                )
-            }
+            StoryGenerationStatus(
+                compact = true,
+                modifier = Modifier.padding(top = 14.dp)
+            )
         }
     }
 }

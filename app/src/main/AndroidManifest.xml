@@ -46,6 +46,28 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/pluck_capture_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widget.TodayJourneyWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_today_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pluck_today_journey_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.LatestStoryWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_story_eyebrow">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pluck_latest_story_widget_info" />
+        </receiver>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -379,7 +379,7 @@ fun AnimatedPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluckTopAppBar(
-    title: String,
+    title: String?,
     subtitle: String? = null,
     onBack: (() -> Unit)? = null,
     actions: @Composable (() -> Unit)? = null,
@@ -390,22 +390,24 @@ fun PluckTopAppBar(
     TopAppBar(
         modifier = modifier,
         title = {
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = glassBorder(),
-                tonalElevation = 2.dp,
-                shadowElevation = 5.dp
-            ) {
-                Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium)
-                    AnimatedVisibility(subtitle != null) {
-                        subtitle?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+            title?.let { appBarTitle ->
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = glassBorder(),
+                    tonalElevation = 2.dp,
+                    shadowElevation = 5.dp
+                ) {
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                        Text(appBarTitle, style = MaterialTheme.typography.titleMedium)
+                        AnimatedVisibility(subtitle != null) {
+                            subtitle?.let {
+                                Text(
+                                    it,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

@@ -39,6 +39,8 @@ import com.example.pluck.domain.repository.JourneyRepository
 import com.example.pluck.domain.repository.SettingsRepository
 import com.example.pluck.domain.repository.StoryRepository
 import com.example.pluck.domain.repository.NovellaRepository
+import com.example.pluck.widget.LatestStoryWidgetProvider
+import com.example.pluck.widget.TodayJourneyWidgetProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileOutputStream
@@ -112,10 +114,13 @@ class RoomJourneyRepository @Inject constructor(
 
     override suspend fun getOrCreateToday(): Journey {
         val date = today()
-        return (journeyDao.findByDate(date) ?: JourneyEntity(date = date, timeZoneId = ZoneId.systemDefault().id, createdAt = System.currentTimeMillis()).let {
+        val existing = journeyDao.findByDate(date)
+        val journey = (existing ?: JourneyEntity(date = date, timeZoneId = ZoneId.systemDefault().id, createdAt = System.currentTimeMillis()).let {
             val id = journeyDao.insert(it)
             it.copy(id = id)
         }).toDomain()
+        if (existing == null) refreshTodayJourneyWidget()
+        return journey
     }
 
     /**
@@ -188,6 +193,7 @@ class RoomJourneyRepository @Inject constructor(
 
     override suspend fun addPhoto(journeyId: Long, imagePath: String, timestamp: Long, latitude: Double?, longitude: Double?, address: String?) {
         photoDao.insert(JourneyPhotoEntity(journeyId = journeyId, imagePath = imagePath, timestamp = timestamp, latitude = latitude, longitude = longitude, address = address))
+        refreshTodayJourneyWidget()
     }
 
     override suspend fun deletePhoto(photo: JourneyPhoto) {
@@ -204,6 +210,7 @@ class RoomJourneyRepository @Inject constructor(
         )
         // Only remove the private capture after Room committed its scene cleanup and photo row.
         File(photo.imagePath).delete()
+        refreshTodayJourneyWidget()
     }
 
     override suspend fun deleteJourney(journeyId: Long) {
@@ -216,6 +223,12 @@ class RoomJourneyRepository @Inject constructor(
         }
         // The database mutation won, so it is now safe to remove the corresponding files.
         imageFiles.forEach(File::delete)
+        refreshTodayJourneyWidget()
+    }
+
+    /** Widget rendering must never make an otherwise successful local data write fail. */
+    private fun refreshTodayJourneyWidget() {
+        runCatching { TodayJourneyWidgetProvider.refreshInstalledWidgets(context) }
     }
 
     private companion object {
@@ -237,27 +250,32 @@ class RoomJourneyRepository @Inject constructor(
 
 @Singleton
 class RoomStoryRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val database: PluckDatabase,
     private val storyDao: StoryDao,
     private val novellaDao: NovellaDao
 ) : StoryRepository {
     override fun observeLatest(journeyId: Long): Flow<Story?> = storyDao.observeLatest(journeyId).map { it?.toDomain() }
     override fun observeLatestDetail(journeyId: Long): Flow<StoryDetail?> = storyDao.observeLatestWithScenes(journeyId).map { it?.toDomain() }
-    override suspend fun save(story: Story, scenes: List<StorySceneReference>): Long = storyDao.insertWithScenes(
-        StoryEntity(
-            id = story.id,
-            journeyId = story.journeyId,
-            title = story.title,
-            content = story.content,
-            provider = story.provider,
-            createdAt = story.createdAt,
-            mood = story.mood,
-            genre = story.creativeSettings.normalized().genre,
-            protagonistName = story.creativeSettings.normalized().protagonistName,
-            companionsJson = creativeSettingsJson.encodeToString(story.creativeSettings.normalized().companions)
-        ),
-        scenes = scenes.map { StorySceneEntity(storyId = 0, photoId = it.photoId, paragraphIndex = it.paragraphIndex) }
-    )
+    override suspend fun save(story: Story, scenes: List<StorySceneReference>): Long {
+        val storyId = storyDao.insertWithScenes(
+            StoryEntity(
+                id = story.id,
+                journeyId = story.journeyId,
+                title = story.title,
+                content = story.content,
+                provider = story.provider,
+                createdAt = story.createdAt,
+                mood = story.mood,
+                genre = story.creativeSettings.normalized().genre,
+                protagonistName = story.creativeSettings.normalized().protagonistName,
+                companionsJson = creativeSettingsJson.encodeToString(story.creativeSettings.normalized().companions)
+            ),
+            scenes = scenes.map { StorySceneEntity(storyId = 0, photoId = it.photoId, paragraphIndex = it.paragraphIndex) }
+        )
+        refreshLatestStoryWidget()
+        return storyId
+    }
 
     override suspend fun deleteStoriesForJourney(journeyId: Long) {
         database.withTransaction {
@@ -266,6 +284,12 @@ class RoomStoryRepository @Inject constructor(
             // story_scenes references stories with ON DELETE CASCADE, so no scene can survive.
             storyDao.deleteForJourney(journeyId)
         }
+        refreshLatestStoryWidget()
+    }
+
+    /** Widget rendering must never make an otherwise successful local data write fail. */
+    private fun refreshLatestStoryWidget() {
+        runCatching { LatestStoryWidgetProvider.refreshInstalledWidgets(context) }
     }
 }
 

@@ -28,6 +28,9 @@ enum class PluckHapticEvent {
     /** The camera shutter has been pressed. */
     Capture,
 
+    /** A single ambient cue during a user-initiated story-generation sequence. */
+    GenerationPulse,
+
     /** A destructive action has been deliberately confirmed. */
     DestructiveAction,
 
@@ -57,6 +60,7 @@ class PluckHaptics internal constructor(
                 PluckHapticEvent.PrimaryAction,
                 PluckHapticEvent.Success -> HapticFeedbackType.Confirm
                 PluckHapticEvent.Capture -> HapticFeedbackType.GestureEnd
+                PluckHapticEvent.GenerationPulse -> HapticFeedbackType.Confirm
                 PluckHapticEvent.DestructiveAction -> HapticFeedbackType.LongPress
                 PluckHapticEvent.Error -> HapticFeedbackType.Reject
             }
@@ -66,7 +70,7 @@ class PluckHaptics internal constructor(
 
 private fun HapticMode.allows(event: PluckHapticEvent): Boolean = when (this) {
     HapticMode.OFF -> false
-    HapticMode.ESSENTIAL -> event != PluckHapticEvent.Navigation
+    HapticMode.ESSENTIAL -> event != PluckHapticEvent.Navigation && event != PluckHapticEvent.GenerationPulse
     HapticMode.FULL -> true
 }
 
