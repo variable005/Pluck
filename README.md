@@ -173,6 +173,6 @@ The Home screen includes **Open demo journey · 20 original images**. It creates
 
 The project builds as a debug application. Before publishing, validate the complete flow on a real target device—especially the S23—for model download, verified offline generation, camera/location permissions, thermal behavior, export/open flows, sharing, offline TTS voices, and each cloud provider with a real user key. Add regression coverage for Room migrations and model download/verification failures before treating a release build as production-ready.
 
-## License and acknowledgements
+---
 
-Pluck is a project by Hariom Sharnam. Before distribution, add the intended app license, third-party notices, model-license terms, privacy policy, and Play Store Data Safety disclosures.
+**Project by Hariom Sharnam**
