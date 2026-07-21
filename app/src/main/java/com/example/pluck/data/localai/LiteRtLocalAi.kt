@@ -55,14 +55,14 @@ import kotlin.coroutines.resumeWithException
 /**
  * Immutable source manifest for the only model Pluck accepts in this release.
  *
- * The source is the LiteRT Community channel that the official Google AI Edge
- * documentation directs LiteRT-LM developers to. The revision and SHA-256 are
- * deliberately compiled into the signed app: changing a URL in preferences or
- * supplying a model file is not possible.
+ * The source is the Google-documented LiteRT Community distribution channel,
+ * delivered through Hugging Face. It is not a Google-owned download host. The
+ * revision and SHA-256 are deliberately compiled into the signed app: changing
+ * a URL in preferences or supplying a model file is not possible.
  */
 internal object OfficialGemma4E2B {
     const val name = "Gemma 4 E2B Instruct"
-    const val publisher = "Google AI Edge · LiteRT Community"
+    const val publisher = "Google AI Edge LiteRT Community · delivered via Hugging Face"
     const val repository = "litert-community/gemma-4-E2B-it-litert-lm"
     const val revision = "7022fb75cac85d830562b14e8b583bdb7f8cb322"
     const val fileName = "gemma-4-E2B-it.litertlm"

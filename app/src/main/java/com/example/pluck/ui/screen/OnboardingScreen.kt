@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +23,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Button
@@ -47,12 +47,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.pluck.R
 import com.example.pluck.ui.components.PluckHapticEvent
 import com.example.pluck.ui.components.rememberPluckHaptics
 import com.example.pluck.viewmodel.OnboardingViewModel
@@ -144,10 +146,10 @@ private fun OnboardingContent(
                         tonalElevation = 2.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.AutoStories,
-                                contentDescription = null,
-                                modifier = Modifier.size(36.dp)
+                            Image(
+                                painter = painterResource(R.drawable.pluck_petal_mark),
+                                contentDescription = "Pluck flower logo",
+                                modifier = Modifier.size(48.dp)
                             )
                         }
                     }

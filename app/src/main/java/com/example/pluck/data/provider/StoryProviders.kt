@@ -124,17 +124,21 @@ class OpenRouterStoryProvider @Inject constructor(api: StoryApi) : OpenAiCompati
 
 class GeminiStoryProvider @Inject constructor(private val api: StoryApi) : RestStoryProvider(api) {
     override val type = AiProvider.GEMINI
-    private fun url(key: String) = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$key"
+    private val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    private fun headers(key: String) = mapOf(
+        "x-goog-api-key" to key,
+        "Content-Type" to "application/json"
+    )
     private fun payload(prompt: String, photos: List<String>) = buildJsonObject {
         put("contents", buildJsonArray { add(buildJsonObject { put("parts", buildJsonArray { add(buildJsonObject { put("text", prompt) }); photos.forEach { encoded -> add(buildJsonObject { put("inlineData", buildJsonObject { put("mimeType", "image/jpeg"); put("data", encoded) }) }) } }) }) })
         put("generationConfig", buildJsonObject { put("maxOutputTokens", 1800); put("temperature", 0.85) })
     }
     override suspend fun generateStory(input: StoryGenerationInput, apiKey: String): GeneratedStory {
-        val response = request(url(apiKey), emptyMap(), payload(StoryPromptBuilder.build(input), input.photos.map { imageBase64(it.imagePath) }))
+        val response = request(endpoint, headers(apiKey), payload(StoryPromptBuilder.build(input), input.photos.map { imageBase64(it.imagePath) }))
         val text = response["candidates"]!!.jsonArray[0].jsonObject["content"]!!.jsonObject["parts"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content
         return StoryPromptBuilder.parse(text, input)
     }
-    override suspend fun probe(apiKey: String) { request(url(apiKey), emptyMap(), payload("Reply only OK.", emptyList())) }
+    override suspend fun probe(apiKey: String) { request(endpoint, headers(apiKey), payload("Reply only OK.", emptyList())) }
 }
 
 class ClaudeStoryProvider @Inject constructor(private val api: StoryApi) : RestStoryProvider(api) {

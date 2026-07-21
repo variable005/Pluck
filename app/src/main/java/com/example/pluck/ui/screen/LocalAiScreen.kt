@@ -368,7 +368,7 @@ private fun SecurityCard() {
                 Text("Fixed source. Verified model.", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 10.dp))
             }
             Text(
-                "Pluck accepts one immutable Google AI Edge LiteRT Community release over HTTPS, verifies its SHA-256 before installation, and keeps it in app-private no-backup storage. There are no manual URLs, imports, or sideloaded models.",
+                "Pluck uses one fixed Google-documented LiteRT Community model distribution, delivered through Hugging Face over HTTPS. It verifies the pinned SHA-256 before installation and keeps the model in app-private no-backup storage. There are no manual URLs, imports, or sideloaded models.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -381,7 +381,7 @@ private fun DownloadConsent(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Download Local Gemma?") },
-        text = { Text("Gemma 4 E2B is a one-time 2.58 GB download. Pluck reserves about 4.5 GB of private storage for the download and runtime cache. It downloads only the fixed Google AI Edge LiteRT Community release over HTTPS, verifies its SHA-256, and never accepts a user-supplied model. After verification, stories work offline.") },
+        text = { Text("Gemma 4 E2B is a one-time 2.58 GB download. Pluck reserves about 4.5 GB of private storage for the download and runtime cache. It uses the fixed Google-documented LiteRT Community distribution, delivered through Hugging Face over HTTPS, verifies its SHA-256, and never accepts a user-supplied model. After verification, stories work offline.") },
         confirmButton = { TextButton(onClick = onConfirm) { Text("Download") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } }
     )

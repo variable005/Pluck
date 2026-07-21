@@ -151,7 +151,7 @@ private fun LocalAiSettingsCard(onClick: () -> Unit, modifier: Modifier = Modifi
             ) {
                 Text("Local AI", style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "Download Google's verified on-device model once, then create stories without uploading photos or prompts.",
+                    "Download the verified LiteRT Community model once, then create stories without uploading photos or prompts.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

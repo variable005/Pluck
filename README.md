@@ -1,5 +1,7 @@
 # Pluck
 
+![Pluck — a violet petal travelling through a day of places](repo-banner.png)
+
 **Real places. Entirely fictional stories.**
 
 Pluck is a local-first Android app for turning a day of captured places into one continuous piece of fiction. Capture a photo at each stop, keep the sequence, choose a mood, and let Pluck write a story in which every place matters to the plot.

@@ -197,7 +197,7 @@ data class LocalAiModelState(
     val status: LocalAiInstallStatus = LocalAiInstallStatus.CHECKING,
     val modelName: String = "Gemma 4 E2B Instruct",
     val modelVersion: String = "7022fb7",
-    val publisher: String = "Google AI Edge · LiteRT Community",
+    val publisher: String = "Google AI Edge LiteRT Community · delivered via Hugging Face",
     val downloadedBytes: Long = 0,
     val totalBytes: Long = 0,
     val requiredStorageBytes: Long = 0,
