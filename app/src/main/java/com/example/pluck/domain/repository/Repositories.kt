@@ -22,14 +22,20 @@ interface JourneyRepository {
     fun observeLibrary(): Flow<List<JourneyLibraryItem>>
     fun observePhotos(journeyId: Long): Flow<List<JourneyPhoto>>
     suspend fun getOrCreateToday(): Journey
+    /** Creates Pluck's asset-backed 20-place demo journey without creating a story. */
+    suspend fun seedDemoJourney(): Journey
     suspend fun addPhoto(journeyId: Long, imagePath: String, timestamp: Long, latitude: Double?, longitude: Double?, address: String?)
     suspend fun deletePhoto(photo: JourneyPhoto)
+    /** Permanently removes a journey and its locally stored image files. */
+    suspend fun deleteJourney(journeyId: Long)
 }
 
 interface StoryRepository {
     fun observeLatest(journeyId: Long): Flow<Story?>
     fun observeLatestDetail(journeyId: Long): Flow<StoryDetail?>
     suspend fun save(story: Story, scenes: List<StorySceneReference> = emptyList()): Long
+    /** Permanently removes every generated version belonging to one journey. */
+    suspend fun deleteStoriesForJourney(journeyId: Long)
 }
 
 /** Stores the membership and continuity state for private, multi-day fictional novellas. */

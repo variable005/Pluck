@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -105,6 +106,12 @@ fun HomeScreen(
                         hasJourney = hasJourney,
                         onJourney = { viewModel.start(onJourney) }
                     )
+                    TextButton(
+                        onClick = { viewModel.openDemo(onJourney) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Open demo journey · 20 original images")
+                    }
                 }
             }
         }

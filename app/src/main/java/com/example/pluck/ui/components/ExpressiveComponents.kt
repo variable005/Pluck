@@ -18,8 +18,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.LazyListState
@@ -317,14 +318,35 @@ private data class ScrollObservation(val position: Long, val inProgress: Boolean
 private fun LazyListState.scrollPosition(): Long =
     firstVisibleItemIndex.toLong() * 1_000_000L + firstVisibleItemScrollOffset
 
+/**
+ * A tactile tonal card with optional tap and long-press actions.
+ *
+ * [onLongClick] is intentionally opt-in so cards stay passive unless a screen explicitly offers
+ * a contextual action such as managing saved content.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ExpressiveCard(onClick: (() -> Unit)? = null, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun ExpressiveCard(
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.985f else 1f, animationSpec = tween(160, easing = FastOutSlowInEasing), label = "cardScale")
     Surface(
         modifier = modifier.graphicsLayer { scaleX = scale; scaleY = scale }.then(
-            if (onClick == null) Modifier else Modifier.clickable(interactionSource = source, role = Role.Button, onClick = onClick)
+            if (onClick == null && onLongClick == null) {
+                Modifier
+            } else {
+                Modifier.combinedClickable(
+                    interactionSource = source,
+                    role = Role.Button,
+                    onClick = onClick ?: {},
+                    onLongClick = onLongClick
+                )
+            }
         ),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,

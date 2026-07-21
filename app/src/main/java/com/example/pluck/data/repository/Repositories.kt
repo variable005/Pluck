@@ -1,6 +1,9 @@
 package com.example.pluck.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.room.withTransaction
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.example.pluck.data.database.JourneyDao
@@ -8,6 +11,7 @@ import com.example.pluck.data.database.JourneyEntity
 import com.example.pluck.data.database.JourneyLibraryRow
 import com.example.pluck.data.database.JourneyPhotoDao
 import com.example.pluck.data.database.JourneyPhotoEntity
+import com.example.pluck.data.database.PluckDatabase
 import com.example.pluck.data.database.StoryDao
 import com.example.pluck.data.database.StoryEntity
 import com.example.pluck.data.database.StoryWithScenesEntity
@@ -37,6 +41,7 @@ import com.example.pluck.domain.repository.StoryRepository
 import com.example.pluck.domain.repository.NovellaRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.io.FileOutputStream
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -46,6 +51,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -89,9 +96,13 @@ private fun JourneyLibraryRow.toDomain() = JourneyLibraryItem(
 
 @Singleton
 class RoomJourneyRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val database: PluckDatabase,
     private val journeyDao: JourneyDao,
-    private val photoDao: JourneyPhotoDao
+    private val photoDao: JourneyPhotoDao,
+    private val novellaDao: NovellaDao
 ) : JourneyRepository {
+    private val demoSeedMutex = Mutex()
     private fun today() = LocalDate.now().toString()
 
     override fun observeToday(): Flow<Journey?> = journeyDao.observeByDate(today()).map { it?.toDomain() }
@@ -107,18 +118,129 @@ class RoomJourneyRepository @Inject constructor(
         }).toDomain()
     }
 
+    /**
+     * Seeds original, bundled illustration crops as a journey only. No story entity is inserted,
+     * so a presenter always demonstrates the real selected-provider generation flow.
+     */
+    override suspend fun seedDemoJourney(): Journey = demoSeedMutex.withLock {
+        val existing = journeyDao.findByDate(DEMO_JOURNEY_DATE)
+        if (existing != null) return@withLock existing.toDomain()
+
+        val journey = JourneyEntity(
+            date = DEMO_JOURNEY_DATE,
+            timeZoneId = ZoneId.systemDefault().id,
+            createdAt = System.currentTimeMillis()
+        ).let { entity -> entity.copy(id = journeyDao.insert(entity)) }
+
+        val grid = context.assets.open(DEMO_GRID_ASSET).use(BitmapFactory::decodeStream)
+            ?: error("The bundled demo journey image could not be read.")
+        try {
+            require(grid.width >= DEMO_COLUMNS && grid.height >= DEMO_ROWS) {
+                "The bundled demo journey image has an invalid grid."
+            }
+            val directory = File(context.filesDir, "journey_photos/demo_journey").apply { mkdirs() }
+            val cellWidth = grid.width / DEMO_COLUMNS
+            val cellHeight = grid.height / DEMO_ROWS
+            val inset = minOf(8, cellWidth / 16, cellHeight / 16)
+            val startTime = LocalDate.now()
+                .atTime(7, 30)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+
+            val photos = DEMO_PLACES.mapIndexed { index, place ->
+                val row = index / DEMO_COLUMNS
+                val column = index % DEMO_COLUMNS
+                val tile = Bitmap.createBitmap(
+                    grid,
+                    column * cellWidth + inset,
+                    row * cellHeight + inset,
+                    cellWidth - inset * 2,
+                    cellHeight - inset * 2
+                )
+                val image = File(directory, "demo_${(index + 1).toString().padStart(2, '0')}.jpg")
+                try {
+                    FileOutputStream(image).use { output ->
+                        check(tile.compress(Bitmap.CompressFormat.JPEG, 88, output)) {
+                            "The demo image could not be written."
+                        }
+                    }
+                } finally {
+                    tile.recycle()
+                }
+                JourneyPhotoEntity(
+                    journeyId = journey.id,
+                    imagePath = image.absolutePath,
+                    timestamp = startTime + index * DEMO_INTERVAL_MILLIS,
+                    latitude = DEMO_ROUTE_ORIGIN_LATITUDE + index * 0.0017,
+                    longitude = DEMO_ROUTE_ORIGIN_LONGITUDE + index * 0.0012,
+                    address = place
+                )
+            }
+            for (photo in photos) {
+                photoDao.insert(photo)
+            }
+        } finally {
+            grid.recycle()
+        }
+        journey.toDomain()
+    }
+
     override suspend fun addPhoto(journeyId: Long, imagePath: String, timestamp: Long, latitude: Double?, longitude: Double?, address: String?) {
         photoDao.insert(JourneyPhotoEntity(journeyId = journeyId, imagePath = imagePath, timestamp = timestamp, latitude = latitude, longitude = longitude, address = address))
     }
 
     override suspend fun deletePhoto(photo: JourneyPhoto) {
+        photoDao.deleteWithSceneReferences(
+            JourneyPhotoEntity(
+                photo.id,
+                photo.journeyId,
+                photo.imagePath,
+                photo.latitude,
+                photo.longitude,
+                photo.timestamp,
+                photo.address
+            )
+        )
+        // Only remove the private capture after Room committed its scene cleanup and photo row.
         File(photo.imagePath).delete()
-        photoDao.delete(JourneyPhotoEntity(photo.id, photo.journeyId, photo.imagePath, photo.latitude, photo.longitude, photo.timestamp, photo.address))
+    }
+
+    override suspend fun deleteJourney(journeyId: Long) {
+        val imageFiles = database.withTransaction {
+            val files = photoDao.forJourney(journeyId).map { File(it.imagePath) }
+            novellaDao.removeJourneyAndRepairArc(journeyId, System.currentTimeMillis())
+            // Room cascades this to photos, daily stories, and their scene references.
+            journeyDao.deleteById(journeyId)
+            files
+        }
+        // The database mutation won, so it is now safe to remove the corresponding files.
+        imageFiles.forEach(File::delete)
+    }
+
+    private companion object {
+        const val DEMO_JOURNEY_DATE = "2026-01-01"
+        const val DEMO_GRID_ASSET = "pluck_demo_journey_grid.png"
+        const val DEMO_COLUMNS = 5
+        const val DEMO_ROWS = 4
+        const val DEMO_INTERVAL_MILLIS = 42L * 60L * 1_000L
+        const val DEMO_ROUTE_ORIGIN_LATITUDE = 37.7700
+        const val DEMO_ROUTE_ORIGIN_LONGITUDE = -122.4400
+        val DEMO_PLACES = listOf(
+            "Sunrise apartment window", "Maple Street", "Cedar subway entrance", "Golden Crust bakery", "Juniper Park path",
+            "Morning flower stall", "The Lantern Bookshop", "Corner coffee table", "Riverside footbridge", "Northlight Gallery",
+            "Skyline rooftop garden", "The old cinema", "Needle & Groove records", "Lantern Alley", "Greenmarket storefront",
+            "Blue Hour tram stop", "Hilltop overlook", "The quiet dinner table", "Night train platform", "Home at last"
+        )
     }
 }
 
 @Singleton
-class RoomStoryRepository @Inject constructor(private val storyDao: StoryDao) : StoryRepository {
+class RoomStoryRepository @Inject constructor(
+    private val database: PluckDatabase,
+    private val storyDao: StoryDao,
+    private val novellaDao: NovellaDao
+) : StoryRepository {
     override fun observeLatest(journeyId: Long): Flow<Story?> = storyDao.observeLatest(journeyId).map { it?.toDomain() }
     override fun observeLatestDetail(journeyId: Long): Flow<StoryDetail?> = storyDao.observeLatestWithScenes(journeyId).map { it?.toDomain() }
     override suspend fun save(story: Story, scenes: List<StorySceneReference>): Long = storyDao.insertWithScenes(
@@ -136,6 +258,15 @@ class RoomStoryRepository @Inject constructor(private val storyDao: StoryDao) : 
         ),
         scenes = scenes.map { StorySceneEntity(storyId = 0, photoId = it.photoId, paragraphIndex = it.paragraphIndex) }
     )
+
+    override suspend fun deleteStoriesForJourney(journeyId: Long) {
+        database.withTransaction {
+            val now = System.currentTimeMillis()
+            novellaDao.removeStoryForJourney(journeyId, now)
+            // story_scenes references stories with ON DELETE CASCADE, so no scene can survive.
+            storyDao.deleteForJourney(journeyId)
+        }
+    }
 }
 
 @Singleton

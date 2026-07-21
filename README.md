@@ -20,6 +20,7 @@ There is no AI chat interface, no account, no advertising, no analytics, and no 
 - Export one story or a month of stories as a PDF book or EPUB, with selected photos, chapter headers, deterministic cover art, and a private route sketch.
 - Create local share cards in portrait, Instagram Story, or X/Twitter landscape formats. Shared images omit photo metadata.
 - Add the **Capture next place** widget to see Local Gemma readiness and start today’s capture flow.
+- Open a bundled **20-place demo journey** made from original illustrations. It seeds images and fictional local metadata only—never a prewritten story—so generation remains live for presentations.
 
 ## Privacy at a glance
 
@@ -150,6 +151,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 2. Grant camera permission; grant location permission if you want address and private route features.
 3. In Settings, choose either a cloud provider and enter its API key, or download Local Gemma.
 4. Start today’s journey, capture at least two places, then generate a story.
+
+### Hackathon demo journey
+
+The Home screen includes **Open demo journey · 20 original images**. It creates one local, asset-backed journey with twenty original illustrated places, fictional timestamps, synthetic route coordinates, and fictional addresses. It deliberately creates no `Story` record. Pick a provider and press Generate to demonstrate the actual live story pipeline without personal photos.
 
 ## Technology
 

@@ -135,9 +135,9 @@ private fun AppearanceCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Use wallpaper colors", style = MaterialTheme.typography.titleSmall)
+                    Text("Use device colors", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        "Use Android’s dynamic Material You color palette when available.",
+                        "Match Pluck to your phone’s dynamic Material You color palette.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

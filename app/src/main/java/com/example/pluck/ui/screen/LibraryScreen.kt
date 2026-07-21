@@ -30,9 +30,10 @@ import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PictureAsPdf
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -48,6 +49,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -64,7 +67,9 @@ import com.example.pluck.ui.components.LoadingView
 import com.example.pluck.ui.components.LocalFloatingNavigationBarClearance
 import com.example.pluck.ui.components.ObserveFloatingNavigationScroll
 import com.example.pluck.ui.components.PluckTopAppBar
+import com.example.pluck.ui.components.PluckHapticEvent
 import com.example.pluck.ui.components.StatusPill
+import com.example.pluck.ui.components.rememberPluckHaptics
 import com.example.pluck.viewmodel.LibraryViewModel
 import com.example.pluck.viewmodel.BookExportUiState
 import java.io.File
@@ -102,6 +107,8 @@ fun LibraryScreen(
     val state by viewModel.uiState.collectAsState()
     var showMonthExport by rememberSaveable { mutableStateOf(false) }
     var pendingMonth by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingDeletion by remember { mutableStateOf<JourneyLibraryItem?>(null) }
+    val haptics = rememberPluckHaptics()
     val pdfExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(BookExportFormat.PDF.mimeType)) { uri ->
         pendingMonth?.let { month -> if (uri != null) viewModel.exportMonth(month, BookExportFormat.PDF, uri) }
     }
@@ -132,9 +139,16 @@ fun LibraryScreen(
                 export = state.export,
                 onOpenJourney = onOpenJourney,
                 onOpenStory = onOpenStory,
-                onCreateNovella = onCreateNovella,
+                onCreateNovella = {
+                    haptics.perform(PluckHapticEvent.PrimaryAction)
+                    onCreateNovella()
+                },
                 onOpenNovella = onOpenNovella,
-                onShowMonthExport = { showMonthExport = true },
+                onShowMonthExport = {
+                    haptics.perform(PluckHapticEvent.PrimaryAction)
+                    showMonthExport = true
+                },
+                onManageJourney = { pendingDeletion = it },
                 modifier = Modifier.fillMaxSize().padding(padding)
             )
         }
@@ -163,6 +177,38 @@ fun LibraryScreen(
             confirmButton = { androidx.compose.material3.TextButton(onClick = viewModel::clearExportMessage) { Text("Done") } }
         )
     }
+
+    pendingDeletion?.let { item ->
+        JourneyDeletionDialog(
+            item = item,
+            onDismiss = { pendingDeletion = null },
+            onDeleteStories = item.story?.let {
+                {
+                    haptics.perform(PluckHapticEvent.DestructiveAction)
+                    viewModel.deleteStories(item.journey.id)
+                    pendingDeletion = null
+                }
+            },
+            onDeleteJourney = {
+                haptics.perform(PluckHapticEvent.DestructiveAction)
+                viewModel.deleteJourney(item.journey.id)
+                pendingDeletion = null
+            }
+        )
+    }
+
+    state.deletionError?.let { error ->
+        AlertDialog(
+            onDismissRequest = viewModel::clearDeletionError,
+            title = { Text("Couldn’t delete saved content") },
+            text = { Text(error) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = viewModel::clearDeletionError) {
+                    Text("Done")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -175,6 +221,7 @@ private fun JourneyLibrary(
     onCreateNovella: () -> Unit,
     onOpenNovella: (Long) -> Unit,
     onShowMonthExport: () -> Unit,
+    onManageJourney: (JourneyLibraryItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var grouping by rememberSaveable { mutableStateOf(LibraryGrouping.WEEK) }
@@ -201,6 +248,12 @@ private fun JourneyLibrary(
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Text(
+                        "Long press a journey to manage its saved story or photos.",
+                        modifier = Modifier.padding(top = 6.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     LazyRow(
                         modifier = Modifier.padding(top = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -214,17 +267,25 @@ private fun JourneyLibrary(
                         }
                     }
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        androidx.compose.material3.TextButton(onClick = onShowMonthExport) {
-                            Icon(Icons.Rounded.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text("Export a month", modifier = Modifier.padding(start = 6.dp))
-                        }
-                        androidx.compose.material3.TextButton(onClick = onCreateNovella) {
-                            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text("New novella", modifier = Modifier.padding(start = 6.dp))
-                        }
+                        LibraryQuickAction(
+                            title = "Export month",
+                            subtitle = "PDF or EPUB",
+                            icon = Icons.Rounded.PictureAsPdf,
+                            accentColor = MaterialTheme.colorScheme.secondary,
+                            onClick = onShowMonthExport,
+                            modifier = Modifier.weight(1f)
+                        )
+                        LibraryQuickAction(
+                            title = "New novella",
+                            subtitle = "Connect days",
+                            icon = Icons.Rounded.AutoStories,
+                            accentColor = MaterialTheme.colorScheme.tertiary,
+                            onClick = onCreateNovella,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                     if (export.isExporting) {
                         StatusPill(export.progressLabel ?: "Creating your private book…")
@@ -237,7 +298,7 @@ private fun JourneyLibrary(
                         "Travelogue novellas",
                         modifier = Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 items(arcs, key = { it.id }) { arc ->
@@ -250,7 +311,7 @@ private fun JourneyLibrary(
                         section.label,
                         modifier = Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 items(section.items, key = { it.journey.id }) { journey ->
@@ -263,7 +324,8 @@ private fun JourneyLibrary(
                             onOpen = {
                                 if (journey.story != null) onOpenStory(journey.journey.id)
                                 else onOpenJourney(journey.journey.id)
-                            }
+                            },
+                            onLongPress = { onManageJourney(journey) }
                         )
                     }
                 }
@@ -272,8 +334,53 @@ private fun JourneyLibrary(
     }
 }
 
+/** A compact, expressive entry point for library-level creation and export actions. */
 @Composable
-private fun JourneyLibraryCard(item: JourneyLibraryItem, onOpen: () -> Unit) {
+private fun LibraryQuickAction(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier.height(88.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = accentColor
+            )
+            Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun JourneyLibraryCard(
+    item: JourneyLibraryItem,
+    onOpen: () -> Unit,
+    onLongPress: () -> Unit
+) {
     val context = LocalContext.current
     val story = item.story
     val actionLabel = if (story == null) "View captured places" else "Read story"
@@ -282,9 +389,11 @@ private fun JourneyLibraryCard(item: JourneyLibraryItem, onOpen: () -> Unit) {
         append(", ${item.photoCount} ${if (item.photoCount == 1) "place" else "places"}")
         if (story != null) append(", story: ${story.title}")
         append(", $actionLabel")
+        append(", long press for delete options")
     }
     ExpressiveCard(
         onClick = onOpen,
+        onLongClick = onLongPress,
         modifier = Modifier
             .fillMaxWidth()
             .semantics { contentDescription = accessibilityLabel }
@@ -322,18 +431,68 @@ private fun JourneyLibraryCard(item: JourneyLibraryItem, onOpen: () -> Unit) {
                     Text(
                         text = actionLabel,
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Icon(
                         imageVector = Icons.Rounded.ArrowOutward,
                         contentDescription = null,
                         modifier = Modifier.padding(start = 4.dp).size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
     }
+}
+
+/** Confirms whether a saved story alone or its entire private journey should be removed. */
+@Composable
+private fun JourneyDeletionDialog(
+    item: JourneyLibraryItem,
+    onDismiss: () -> Unit,
+    onDeleteStories: (() -> Unit)?,
+    onDeleteJourney: () -> Unit
+) {
+    val date = formatJourneyDate(LocalContext.current, item.journey.date)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Manage $date") },
+        text = {
+            Text(
+                if (onDeleteStories != null) {
+                    "Delete every saved version of this story and keep its ${item.photoCount} captured " +
+                        "${if (item.photoCount == 1) "photo" else "photos"}, or permanently delete the entire journey. " +
+                        "Deleting the journey also removes its photos, stories, and any novella membership."
+                } else {
+                    "Permanently delete this journey and its ${item.photoCount} captured " +
+                        "${if (item.photoCount == 1) "photo" else "photos"}. This can’t be undone."
+                }
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = onDeleteJourney,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Delete journey")
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                androidx.compose.material3.TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+                if (onDeleteStories != null) {
+                    androidx.compose.material3.TextButton(
+                        onClick = onDeleteStories,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Delete stories")
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable
@@ -371,7 +530,7 @@ private fun NovellaLibraryCard(arc: NovellaArc, onOpen: () -> Unit) {
             Icon(
                 imageVector = Icons.Rounded.ArrowOutward,
                 contentDescription = "Open novella",
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

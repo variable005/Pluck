@@ -80,12 +80,15 @@ class HomeViewModel @Inject constructor(
         HomeUiState(journey = journey, preferredName = preferredName)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
     fun start(onReady: (Long) -> Unit) = viewModelScope.launch { onReady(journeys.getOrCreateToday().id) }
+    /** Opens twenty bundled demo images; a story is still generated live by the selected provider. */
+    fun openDemo(onReady: (Long) -> Unit) = viewModelScope.launch { onReady(journeys.seedDemoJourney().id) }
 }
 
 data class LibraryUiState(
     val journeys: List<JourneyLibraryItem> = emptyList(),
     val arcs: List<NovellaArc> = emptyList(),
     val export: BookExportUiState = BookExportUiState(),
+    val deletionError: String? = null,
     val isLoading: Boolean = true
 )
 
@@ -107,13 +110,21 @@ class LibraryViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
     private val exportState = MutableStateFlow(BookExportUiState())
+    private val deletionError = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<LibraryUiState> = combine(
         journeys.observeLibrary(),
         novellas.observeArcs(),
-        exportState
-    ) { items, arcs, export ->
-        LibraryUiState(journeys = items, arcs = arcs, export = export, isLoading = false)
+        exportState,
+        deletionError
+    ) { items, arcs, export, deleteError ->
+        LibraryUiState(
+            journeys = items,
+            arcs = arcs,
+            export = export,
+            deletionError = deleteError,
+            isLoading = false
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState())
 
     /** Builds a month book from the latest saved version of each daily story in that month. */
@@ -159,6 +170,26 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun clearExportMessage() { exportState.value = BookExportUiState() }
+
+    /** Removes all saved story versions for a journey while keeping its captured places. */
+    fun deleteStories(journeyId: Long) = runDeletion { stories.deleteStoriesForJourney(journeyId) }
+
+    /** Removes a journey, its private images, generated stories, and any associated chapter. */
+    fun deleteJourney(journeyId: Long) = runDeletion { journeys.deleteJourney(journeyId) }
+
+    fun clearDeletionError() {
+        deletionError.value = null
+    }
+
+    private fun runDeletion(operation: suspend () -> Unit) = viewModelScope.launch {
+        deletionError.value = null
+        try {
+            withContext(Dispatchers.IO) { operation() }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            deletionError.value = error.message ?: "This saved item could not be deleted. Please try again."
+        }
+    }
 }
 
 data class NovellaComposerUiState(

@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.Route
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,6 +51,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -104,6 +106,7 @@ fun TimelineScreen(
     val floatingBarClearance = LocalFloatingNavigationBarClearance.current
     val haptics = rememberPluckHaptics()
     val journey = state.journey
+    var photoPendingDeletion by remember { mutableStateOf<JourneyPhoto?>(null) }
     // The normal route only represents today's active journey. While Room is loading it,
     // keep that route actionable instead of briefly presenting an archive empty state.
     val canAddPlaces = !readOnly && (journey == null || journey.date == LocalDate.now().toString())
@@ -185,8 +188,9 @@ fun TimelineScreen(
                             order = index + 1,
                             total = state.photos.size,
                             isLast = index == state.photos.lastIndex,
-                            canDelete = canAddPlaces,
-                            onDelete = { viewModel.delete(photo) },
+                            canDelete = true,
+                            showDeleteAction = !readOnly,
+                            onDelete = { photoPendingDeletion = photo },
                             modifier = Modifier.animateItem()
                         )
                     }
@@ -229,6 +233,38 @@ fun TimelineScreen(
                     story = state.story,
                     readOnly = readOnly,
                     onGenerateOrRead = { onStory(viewModel.journeyId) }
+                )
+            }
+
+            photoPendingDeletion?.let { photo ->
+                AlertDialog(
+                    onDismissRequest = { photoPendingDeletion = null },
+                    title = { Text("Remove this photo?") },
+                    text = {
+                        Text(
+                            if (readOnly && state.story != null) {
+                                "This permanently removes the photo and its saved location details. Your saved story text will remain unchanged."
+                            } else {
+                                "This permanently removes the photo and its saved location details from this journey. This can’t be undone."
+                            }
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                haptics.perform(PluckHapticEvent.DestructiveAction)
+                                viewModel.delete(photo)
+                                photoPendingDeletion = null
+                            }
+                        ) {
+                            Text("Remove")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { photoPendingDeletion = null }) {
+                            Text("Keep photo")
+                        }
+                    }
                 )
             }
         }
@@ -778,10 +814,10 @@ private fun TimelineItem(
     total: Int,
     isLast: Boolean,
     canDelete: Boolean,
+    showDeleteAction: Boolean,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val haptics = rememberPluckHaptics()
     val context = LocalContext.current
     val time = remember(photo.timestamp) { DateFormat.getTimeFormat(context).format(Date(photo.timestamp)) }
     val nodeColor = when {
@@ -803,7 +839,10 @@ private fun TimelineItem(
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
                 .semantics {
-                    contentDescription = "Place $order of $total, captured at $time. ${photo.address ?: "Place name unavailable"}"
+                    contentDescription = buildString {
+                        append("Place $order of $total, captured at $time. ${photo.address ?: "Place name unavailable"}")
+                        if (canDelete) append(". Long press to remove this photo.")
+                    }
                 },
             verticalAlignment = Alignment.Top
         ) {
@@ -833,7 +872,10 @@ private fun TimelineItem(
                     )
                 }
             }
-            ExpressiveCard(modifier = Modifier.weight(1f)) {
+            ExpressiveCard(
+                onLongClick = if (canDelete) onDelete else null,
+                modifier = Modifier.weight(1f)
+            ) {
                 Column {
                     Box(Modifier.fillMaxWidth().height(178.dp)) {
                         AsyncImage(
@@ -842,27 +884,6 @@ private fun TimelineItem(
                             modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.extraLarge),
                             contentScale = ContentScale.Crop
                         )
-                        if (canDelete) {
-                            Surface(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(12.dp)
-                                    .size(44.dp),
-                                shape = MaterialTheme.shapes.medium,
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                tonalElevation = 3.dp,
-                                shadowElevation = 6.dp
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        haptics.perform(PluckHapticEvent.DestructiveAction)
-                                        onDelete()
-                                    }
-                                ) {
-                                    Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete place $order")
-                                }
-                            }
-                        }
                     }
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -880,6 +901,27 @@ private fun TimelineItem(
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                    AnimatedVisibility(showDeleteAction) {
+                        Column {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = onDelete) {
+                                    Icon(
+                                        Icons.Rounded.DeleteOutline,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Remove photo")
+                                }
+                            }
+                        }
                     }
                 }
             }
