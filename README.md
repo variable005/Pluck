@@ -8,6 +8,24 @@ Pluck is a local-first Android app for turning a day of captured places into one
 
 There is no AI chat interface, no account, no advertising, no analytics, and no Pluck backend.
 
+## Demo
+
+<p align="center">
+  <a href="demo/Screenshot_20260721_175752_Pluck.png"><img src="demo/Screenshot_20260721_175752_Pluck.png" alt="Pluck home screen" width="22%" /></a>
+  <a href="demo/Screenshot_20260721_175756_Pluck.png"><img src="demo/Screenshot_20260721_175756_Pluck.png" alt="An empty journey" width="22%" /></a>
+  <a href="demo/Screenshot_20260721_232747_Pluck.png"><img src="demo/Screenshot_20260721_232747_Pluck.png" alt="A journey in progress" width="22%" /></a>
+  <a href="demo/Screenshot_20260721_232947_Pluck.png"><img src="demo/Screenshot_20260721_232947_Pluck.png" alt="A journey ready for story generation" width="22%" /></a>
+</p>
+
+<p align="center">
+  <a href="demo/Screenshot_20260721_175801_Pluck.png"><img src="demo/Screenshot_20260721_175801_Pluck.png" alt="Saved stories library" width="22%" /></a>
+  <a href="demo/Screenshot_20260721_233005_Pluck.png"><img src="demo/Screenshot_20260721_233005_Pluck.png" alt="Saved journey timeline" width="22%" /></a>
+  <a href="demo/Screenshot_20260721_175823_Pluck.png"><img src="demo/Screenshot_20260721_175823_Pluck.png" alt="Secure provider key settings" width="22%" /></a>
+  <a href="demo/Screenshot_20260721_175905_Pluck.png"><img src="demo/Screenshot_20260721_175905_Pluck.png" alt="Local Gemma readiness" width="22%" /></a>
+</p>
+
+More detailed captures: [full settings](demo/Screenshot_20260721_175806_Pluck.png), [20-place journey timeline](demo/Screenshot_20260721_175833_Pluck.png), [journey-ready state](demo/Screenshot_20260721_232821_Pluck.png), and [current settings view](demo/Screenshot_20260721_232850_Pluck.png).
+
 ## What you can do
 
 - Capture a photo, timestamp, optional coordinates, and approximate address at each place.
