@@ -130,7 +130,7 @@ fun LibraryScreen(
                 body = "Journeys and the stories they inspire will appear here for you to revisit.",
                 action = "Start today’s journey",
                 onAction = onStartJourney,
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp)
+                modifier = Modifier.fillMaxSize().padding(padding)
             )
 
             else -> JourneyLibrary(
@@ -236,11 +236,11 @@ private fun JourneyLibrary(
                 .widthIn(max = 760.dp)
                 .fillMaxSize()
                 .align(Alignment.TopCenter),
-            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = floatingBarClearance + 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(start = 24.dp, top = 20.dp, end = 24.dp, bottom = floatingBarClearance + 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item(key = "library_heading") {
-                Column(Modifier.padding(bottom = 8.dp)) {
+                Column(Modifier.padding(bottom = 12.dp)) {
                     Text("Saved stories", style = MaterialTheme.typography.headlineLarge)
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -248,14 +248,8 @@ private fun JourneyLibrary(
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        "Long press a journey to manage its saved story or photos.",
-                        modifier = Modifier.padding(top = 6.dp),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     LazyRow(
-                        modifier = Modifier.padding(top = 16.dp),
+                        modifier = Modifier.padding(top = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(LibraryGrouping.entries, key = { it.name }) { option ->
@@ -267,7 +261,7 @@ private fun JourneyLibrary(
                         }
                     }
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         LibraryQuickAction(
@@ -288,7 +282,9 @@ private fun JourneyLibrary(
                         )
                     }
                     if (export.isExporting) {
-                        StatusPill(export.progressLabel ?: "Creating your private book…")
+                        Box(Modifier.padding(top = 12.dp)) {
+                            StatusPill(export.progressLabel ?: "Creating your private book…")
+                        }
                     }
                 }
             }
@@ -296,7 +292,7 @@ private fun JourneyLibrary(
                 item(key = "novella_heading") {
                     Text(
                         "Travelogue novellas",
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 12.dp),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -309,7 +305,7 @@ private fun JourneyLibrary(
                 item(key = "section_${section.label}") {
                     Text(
                         section.label,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 12.dp),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -399,15 +395,15 @@ private fun JourneyLibraryCard(
             .semantics { contentDescription = accessibilityLabel }
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             JourneyCover(
                 imagePath = item.coverImagePath,
                 contentDescription = "First place from ${formatJourneyDate(context, item.journey.date)}"
             )
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Spacer(Modifier.width(20.dp))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(formatJourneyDate(context, item.journey.date), style = MaterialTheme.typography.titleLarge)
                 StatusPill(
                     text = if (story == null) "${item.photoCount} ${if (item.photoCount == 1) "place" else "places"}" else "Story saved",
@@ -499,7 +495,7 @@ private fun JourneyDeletionDialog(
 private fun NovellaLibraryCard(arc: NovellaArc, onOpen: () -> Unit) {
     ExpressiveCard(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(

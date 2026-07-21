@@ -78,6 +78,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -450,9 +451,20 @@ fun EmptyState(icon: ImageVector, title: String, body: String, action: String, o
             Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, modifier = Modifier.size(44.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer) }
         }
         Spacer(Modifier.height(24.dp))
-        Text(title, style = MaterialTheme.typography.headlineLarge)
+        Text(
+            text = title,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            style = MaterialTheme.typography.headlineLarge,
+            textAlign = TextAlign.Center
+        )
         Spacer(Modifier.height(8.dp))
-        Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = body,
+            modifier = Modifier.widthIn(max = 440.dp).fillMaxWidth().padding(horizontal = 24.dp),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
         Spacer(Modifier.height(24.dp))
         AnimatedPrimaryButton(action, onAction)
     }

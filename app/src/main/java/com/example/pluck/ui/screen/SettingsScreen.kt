@@ -5,19 +5,24 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.DropdownMenu
@@ -31,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +67,13 @@ fun SettingsScreen(onBack: () -> Unit, onLocalAi: () -> Unit, viewModel: Setting
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
     val floatingBarClearance = LocalFloatingNavigationBarClearance.current
+    val cloudProviders = remember { AiProvider.entries.filter { it.requiresApiKey } }
+    var keyEditorProvider by remember { mutableStateOf(AiProvider.GEMINI) }
+
+    LaunchedEffect(state.provider) {
+        if (state.provider.requiresApiKey) keyEditorProvider = state.provider
+    }
+
     ObserveFloatingNavigationScroll(scrollState)
     Column(Modifier.fillMaxSize()) {
         PluckTopAppBar("Settings", "Your keys stay on this device", onBack)
@@ -86,17 +99,69 @@ fun SettingsScreen(onBack: () -> Unit, onLocalAi: () -> Unit, viewModel: Setting
             Text("Feedback", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 12.dp))
             HapticModeCard(selected = state.hapticMode, onSelect = viewModel::setHapticMode)
             Text("API keys", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 12.dp))
-            Text("Only the active provider needs a key. You can keep keys for multiple providers ready to switch.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            AiProvider.entries.filter { it.requiresApiKey }.forEach { provider ->
-                ApiKeyCard(provider, state.keys[provider].orEmpty(), selected = state.provider == provider, testing = state.testing == provider, result = state.result?.takeIf { it.first == provider }?.second, onValueChange = { viewModel.updateKey(provider, it) }, onSave = { viewModel.saveKey(provider) }, onTest = { viewModel.test(provider) })
-            }
-            ExpressiveCard(onClick = onLocalAi, modifier = Modifier.fillMaxWidth().padding(bottom = floatingBarClearance + 24.dp)) {
-                Column(Modifier.padding(20.dp)) {
-                    Text("Local AI", style = MaterialTheme.typography.titleMedium)
-                    Text("Download Google’s verified on-device model once, then create stories without uploading photos or prompts.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
-                    StatusPill("Manage on-device model")
+            Text(
+                "Keep multiple providers ready without expanding the page. Choose one key to edit or test.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            ApiKeyVault(
+                provider = keyEditorProvider,
+                providers = cloudProviders,
+                keys = state.keys,
+                isPreferredProvider = state.provider == keyEditorProvider,
+                value = state.keys[keyEditorProvider].orEmpty(),
+                testing = state.testing == keyEditorProvider,
+                result = state.result?.takeIf { it.first == keyEditorProvider }?.second,
+                onProviderSelect = { keyEditorProvider = it },
+                onValueChange = { viewModel.updateKey(keyEditorProvider, it) },
+                onSave = { viewModel.saveKey(keyEditorProvider) },
+                onTest = { viewModel.test(keyEditorProvider) }
+            )
+            LocalAiSettingsCard(
+                onClick = onLocalAi,
+                modifier = Modifier.fillMaxWidth().padding(bottom = floatingBarClearance + 24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LocalAiSettingsCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    ExpressiveCard(onClick = onClick, modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            androidx.compose.material3.Surface(
+                modifier = Modifier.size(48.dp),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Memory,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 }
             }
+            Column(
+                modifier = Modifier.weight(1f).padding(start = 16.dp, end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("Local AI", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Download Google's verified on-device model once, then create stories without uploading photos or prompts.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                StatusPill("Manage on-device model")
+            }
+            Icon(
+                imageVector = Icons.Rounded.ArrowOutward,
+                contentDescription = "Open Local AI",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -116,7 +181,10 @@ private fun AppearanceCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 ThemeMode.entries.forEach { mode ->
                     FilterChip(
                         selected = selected == mode,
@@ -137,7 +205,11 @@ private fun AppearanceCard(
                 Column(Modifier.weight(1f)) {
                     Text("Use device colors", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        "Match Pluck to your phone’s dynamic Material You color palette.",
+                        if (selected == ThemeMode.AMOLED_BLACK) {
+                            "Keep true black surfaces while using device colors only as subtle accents."
+                        } else {
+                            "Match Pluck to your phone’s dynamic Material You color palette."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -207,31 +279,128 @@ private fun ProviderSelector(selected: AiProvider, onSelect: (AiProvider) -> Uni
 }
 
 @Composable
-private fun ApiKeyCard(provider: AiProvider, value: String, selected: Boolean, testing: Boolean, result: ConnectionResult?, onValueChange: (String) -> Unit, onSave: () -> Unit, onTest: () -> Unit) {
+private fun ApiKeyVault(
+    provider: AiProvider,
+    providers: List<AiProvider>,
+    keys: Map<AiProvider, String>,
+    isPreferredProvider: Boolean,
+    value: String,
+    testing: Boolean,
+    result: ConnectionResult?,
+    onProviderSelect: (AiProvider) -> Unit,
+    onValueChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onTest: () -> Unit
+) {
+    var pickerExpanded by remember { mutableStateOf(false) }
     var reveal by remember(provider) { mutableStateOf(false) }
+    val savedKeyCount = providers.count { keys[it].isNullOrBlank().not() }
+
     ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Key, null, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                    Text(provider.displayName, style = MaterialTheme.typography.titleMedium)
-                    Text(if (selected) "Currently selected" else "Ready to connect", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                androidx.compose.material3.Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Key,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
-                if (selected) StatusPill("Active")
+                Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                    Text("Provider key vault", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "$savedKeyCount of ${providers.size} keys saved securely",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (isPreferredProvider) StatusPill("Default")
             }
+
+            Text("Editing", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box {
+                androidx.compose.material3.Surface(
+                    onClick = { pickerExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(provider.displayName, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                if (value.isBlank()) "No key saved" else "Key saved on this device",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(Icons.Rounded.ExpandMore, contentDescription = "Choose provider")
+                    }
+                }
+                DropdownMenu(
+                    expanded = pickerExpanded,
+                    onDismissRequest = { pickerExpanded = false }
+                ) {
+                    providers.forEach { candidate ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(candidate.displayName)
+                                    Text(
+                                        if (keys[candidate].isNullOrBlank()) "No key saved" else "Key saved on this device",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            onClick = {
+                                onProviderSelect(candidate)
+                                pickerExpanded = false
+                            },
+                            trailingIcon = {
+                                if (candidate == provider) Icon(Icons.Rounded.CheckCircle, contentDescription = null)
+                            }
+                        )
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("API key") },
+                label = { Text("${provider.displayName} API key") },
                 singleLine = true,
                 visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                trailingIcon = { IconButton(onClick = { reveal = !reveal }) { Icon(if (reveal) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (reveal) "Hide key" else "Reveal key") } }
+                trailingIcon = {
+                    IconButton(onClick = { reveal = !reveal }) {
+                        Icon(
+                            imageVector = if (reveal) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                            contentDescription = if (reveal) "Hide key" else "Reveal key"
+                        )
+                    }
+                }
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onSave, enabled = value.isNotBlank()) { Text("Save key") }
-                AnimatedPrimaryButton(if (testing) "Testing…" else "Test connection", onTest, enabled = !testing)
+                AnimatedPrimaryButton(
+                    text = if (testing) "Testing…" else "Test connection",
+                    onClick = onTest,
+                    enabled = !testing
+                )
             }
             AnimatedVisibility(result != null, enter = fadeIn() + expandVertically(), exit = fadeOut()) {
                 result?.let { ConnectionStatus(it) }

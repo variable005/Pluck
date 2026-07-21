@@ -160,7 +160,7 @@ fun PluckNavHost(widgetCaptureRequest: Long = 0L) {
                     }
                 )
             }
-            composable("home") { HomeScreen(onJourney = { navController.navigate("timeline/$it") }, onSettings = { navController.navigate("settings") }) }
+            composable("home") { HomeScreen(onJourney = { navController.navigate("timeline/$it") }) }
             composable("journey") { JourneyGateway(onJourney = { navController.navigate("timeline/$it") }) }
             composable("library") {
                 LibraryScreen(

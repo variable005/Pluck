@@ -14,11 +14,12 @@ enum class HapticMode(val displayName: String) {
     FULL("Full")
 }
 
-/** Selects whether Pluck follows the device, stays light, or stays dark. */
+/** Selects whether Pluck follows the device, stays light/dark, or uses OLED-optimized black. */
 enum class ThemeMode(val displayName: String) {
     SYSTEM("System"),
     LIGHT("Light"),
-    DARK("Dark")
+    DARK("Dark"),
+    AMOLED_BLACK("AMOLED black")
 }
 
 /** The narrative atmosphere selected before Pluck writes a story. */
