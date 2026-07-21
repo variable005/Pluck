@@ -10,6 +10,15 @@ Pluck is a local-first Android app for turning a day of captured places into one
 
 There is no AI chat interface, no account, no advertising, no analytics, and no Pluck backend.
 
+<p align="center">
+  <a href="#app-showcase"><b>App Showcase</b></a> •
+  <a href="#built-with-codex"><b>Built with Codex</b></a> •
+  <a href="#what-you-can-do"><b>Features</b></a> •
+  <a href="#privacy-at-a-glance"><b>Privacy</b></a> •
+  <a href="#local-gemma"><b>Local Gemma</b></a> •
+  <a href="#build-and-run"><b>Build & Run</b></a>
+</p>
+
 ## App Showcase
 
 ### Journey Creation & Story Setup
