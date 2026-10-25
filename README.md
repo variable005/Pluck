@@ -5,6 +5,14 @@
 > [!WARNING]
 > **Device Stability & Performance:** Running large multimodal AI models directly on-device requires significant RAM, CPU, and GPU resources. On unsupported or lower-tier devices, on-device generation may cause high thermal loads, battery drain, UI freezes/hangs, or unexpected app crashes due to system out-of-memory (OOM) pressure. If your device struggles, use one of the supported cloud providers in Settings.
 
+### Disclaimer
+
+Pluck is an experimental software project provided for educational and informational purposes. It is provided "as is" and "as available", without warranties of any kind, to the maximum extent permitted by applicable law.
+
+On-device AI inference may cause excessive resource consumption, overheating, battery drain, application instability, or device crashes. Compatibility and performance are not guaranteed. Users are responsible for evaluating device compatibility, maintaining backups, and deciding whether to install or use the application.
+
+To the maximum extent permitted by applicable law, the author disclaims liability for damages arising from the use or inability to use this software.
+
 **Real places. Entirely fictional stories.**
 
 Pluck is a local-first Android app for turning a day of captured places into one continuous piece of fiction. Capture a photo at each stop, keep the sequence, choose a mood, and let Pluck write a story in which every place matters to the plot.
