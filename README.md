@@ -1,181 +1,15 @@
 # Pluck
 
-<p align="center">
-  <img src="Pluck.png" alt="Pluck" width="100%" />
-</p>
+![Pluck — a violet petal travelling through a day of places](repo-banner.png)
+
+> [!WARNING]
+> **Device Stability & Performance:** Running large multimodal AI models directly on-device requires significant RAM, CPU, and GPU resources. On unsupported or lower-tier devices, on-device generation may cause high thermal loads, battery drain, UI freezes/hangs, or unexpected app crashes due to system out-of-memory (OOM) pressure. If your device struggles, use one of the supported cloud providers in Settings.
 
 **Real places. Entirely fictional stories.**
 
 Pluck is a local-first Android app for turning a day of captured places into one continuous piece of fiction. Capture a photo at each stop, keep the sequence, choose a mood, and let Pluck write a story in which every place matters to the plot.
 
 There is no AI chat interface, no account, no advertising, no analytics, and no Pluck backend.
-
-<p align="center">
-  <a href="#app-showcase"><b>App Showcase</b></a> •
-  <a href="#built-with-codex"><b>Built with Codex</b></a> •
-  <a href="#what-you-can-do"><b>Features</b></a> •
-  <a href="#privacy-at-a-glance"><b>Privacy</b></a> •
-  <a href="#local-gemma"><b>Local Gemma</b></a> •
-  <a href="#build-and-run"><b>Build & Run</b></a>
-</p>
-
-## App Showcase
-
-### Journey Creation & Story Setup
-
-<table align="center">
-  <tr>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_175752_Pluck.png">
-        <img src="demo/Screenshot_20260721_175752_Pluck.png" alt="Pluck Home Screen" width="100%" />
-      </a>
-      <br />
-      <sub><b>Home Screen</b><br />Start journey or try demo</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_175756_Pluck.png">
-        <img src="demo/Screenshot_20260721_175756_Pluck.png" alt="Empty Journey" width="100%" />
-      </a>
-      <br />
-      <sub><b>Empty Journey</b><br />Ready for photo captures</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_232747_Pluck.png">
-        <img src="demo/Screenshot_20260721_232747_Pluck.png" alt="Journey in Progress" width="100%" />
-      </a>
-      <br />
-      <sub><b>Journey Progress</b><br />Capturing stops along the day</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_232947_Pluck.png">
-        <img src="demo/Screenshot_20260721_232947_Pluck.png" alt="Story Generation Setup" width="100%" />
-      </a>
-      <br />
-      <sub><b>Story Setup</b><br />Mood selection & creative prompt</sub>
-    </td>
-  </tr>
-</table>
-
-### Reading & Interactive Timelines
-
-<table align="center">
-  <tr>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260722_003209_Pluck.png">
-        <img src="demo/Screenshot_20260722_003209_Pluck.png" alt="Story Reader" width="100%" />
-      </a>
-      <br />
-      <sub><b>Story Reader</b><br />Reality vs Fiction scene sync</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_175801_Pluck.png">
-        <img src="demo/Screenshot_20260721_175801_Pluck.png" alt="Saved Stories Library" width="100%" />
-      </a>
-      <br />
-      <sub><b>Stories Library</b><br />Saved stories & novella arcs</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_233005_Pluck.png">
-        <img src="demo/Screenshot_20260721_233005_Pluck.png" alt="Saved Journey Timeline" width="100%" />
-      </a>
-      <br />
-      <sub><b>Journey Timeline</b><br />Timeline with route sketch</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_175833_Pluck.png">
-        <img src="demo/Screenshot_20260721_175833_Pluck.png" alt="20-Stop Demo Timeline" width="100%" />
-      </a>
-      <br />
-      <sub><b>20-Stop Demo</b><br />Rich multi-place timeline</sub>
-    </td>
-  </tr>
-</table>
-
-### Export, Sharing & Native Integration
-
-<table align="center">
-  <tr>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260722_003250_Pluck.png">
-        <img src="demo/Screenshot_20260722_003250_Pluck.png" alt="Story Share Card" width="100%" />
-      </a>
-      <br />
-      <sub><b>Share Cards</b><br />Private social story cards</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260722_003252_Pluck.png">
-        <img src="demo/Screenshot_20260722_003252_Pluck.png" alt="PDF & EPUB Export" width="100%" />
-      </a>
-      <br />
-      <sub><b>Book Export</b><br />PDF & EPUB compilation</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_232821_Pluck.png">
-        <img src="demo/Screenshot_20260721_232821_Pluck.png" alt="Journey Ready State" width="100%" />
-      </a>
-      <br />
-      <sub><b>Journey Ready</b><br />All stops captured & ready</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260722_003304_IntentResolver.png">
-        <img src="demo/Screenshot_20260722_003304_IntentResolver.png" alt="Android Share Target" width="100%" />
-      </a>
-      <br />
-      <sub><b>Android Share Sheet</b><br />Direct system share targets</sub>
-    </td>
-  </tr>
-</table>
-
-### Local-First AI & Security Settings
-
-<table align="center">
-  <tr>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_175905_Pluck.png">
-        <img src="demo/Screenshot_20260721_175905_Pluck.png" alt="Local Gemma Setup" width="100%" />
-      </a>
-      <br />
-      <sub><b>Local Gemma 4</b><br />On-device LLM readiness</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_175823_Pluck.png">
-        <img src="demo/Screenshot_20260721_175823_Pluck.png" alt="Cloud Provider Keys" width="100%" />
-      </a>
-      <br />
-      <sub><b>Secure Keys</b><br />Keystore-backed API keys</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_232850_Pluck.png">
-        <img src="demo/Screenshot_20260721_232850_Pluck.png" alt="Provider Selection" width="100%" />
-      </a>
-      <br />
-      <sub><b>Provider Settings</b><br />Cloud & Local selection</sub>
-    </td>
-    <td align="center" width="25%">
-      <a href="demo/Screenshot_20260721_175806_Pluck.png">
-        <img src="demo/Screenshot_20260721_175806_Pluck.png" alt="App Preferences" width="100%" />
-      </a>
-      <br />
-      <sub><b>App Preferences</b><br />Theming, dynamic color & haptics</sub>
-    </td>
-  </tr>
-</table>
-
-## Built with Codex
-
-Pluck was designed and iterated in a sustained collaboration with **GPT-5.6 in Codex**. Codex was not used as a one-shot code generator: it worked alongside me through product decisions, UI critique, implementation, debugging, and verification, while I retained ownership of scope, privacy choices, and final UX direction.
-
-### Where Codex accelerated the project
-
-- **Architecture and product shaping.** Starting from the idea of turning real places into fictional stories, Codex helped turn the concept into a local-first Android plan: Compose + Material 3, MVVM, Hilt, Room, CameraX, app-private media storage, and a provider abstraction that keeps cloud models and Local Gemma behind the same story-generation contract.
-- **Fast, intentional UI iteration.** I set the creative direction—minimal, expressive, native Android, no chat surface, dynamic theming, AMOLED support, haptics, and an emotionally calm reader. Codex translated feedback into reusable Compose components and repeatedly refined the Home, Journey, Library, Story Reader, Settings, loading, and navigation experiences.
-- **Feature implementation.** Codex accelerated the work behind the polished surface: multi-provider story generation, Local Gemma readiness and model management, story revisions without chat, Reality vs Fiction reading, widgets, PDF/EPUB export, share cards, multi-day novella arcs, offline TTS, saved-journey generation, and gallery import.
-- **Engineering and debugging.** Codex traced build and runtime failures from Android Studio/Logcat output, including a stale JDK `jlink` configuration and a LiteRT-LM coroutine mismatch. It also verified builds after changes and kept new gallery photos private by normalizing them into app-owned JPEG files instead of relying on temporary picker URIs.
-- **Quality and privacy review.** I made the key trade-offs: no accounts, no Pluck backend, no ads or analytics, user-owned cloud API keys, and an optional offline Local Gemma path. Codex helped surface privacy implications around location metadata, cloud generation, exports, and model downloads so those choices could be explicit in the app and README.
-
-### Personal decisions, Codex leverage
-
-I chose what Pluck should feel like and what it should not become: a magical storytelling tool rather than a journal, travel log, or AI chat app. I reviewed real device results, supplied visual direction and screenshots, selected the final feature set, and decided the privacy boundaries. GPT-5.6 and Codex made the loop dramatically faster by preserving project context, inspecting the existing codebase before making changes, proposing focused implementations, applying those changes, and compiling the Android project to validate them.
 
 ## What you can do
 
@@ -190,7 +24,7 @@ I chose what Pluck should feel like and what it should not become: a magical sto
 - Group daily journeys into a continuing multi-day novella with a shared fictional world and continuity hand-off between chapters.
 - Export one story or a month of stories as a PDF book or EPUB, with selected photos, chapter headers, deterministic cover art, and a private route sketch.
 - Create local share cards in portrait, Instagram Story, or X/Twitter landscape formats. Shared images omit photo metadata.
-- Add one of Pluck’s private home-screen widgets: **Capture next place** for Local Gemma readiness and camera access, **Today’s journey** for a live capture count, or **Latest story** for a short reading preview. Widgets never show photos, addresses, or route data.
+- Add the **Capture next place** widget to see Local Gemma readiness and start today’s capture flow.
 - Open a bundled **20-place demo journey** made from original illustrations. It seeds images and fictional local metadata only—never a prewritten story—so generation remains live for presentations.
 
 ## Privacy at a glance
@@ -204,33 +38,6 @@ I chose what Pluck should feel like and what it should not become: a magical sto
 | Pluck account or server | Never used | Never used |
 
 When a cloud provider is selected, the ordered images and the story prompt (which can include time and location hints) are sent to that provider’s API. Choose Local Gemma when you want the complete generation path to stay on-device.
-
-## Minimum device requirements
-
-### Core app
-
-- **Android 7.0 / API 24 or later.**
-- A usable **rear camera** for in-app capture, or access to the system photo picker for building a journey from existing photos.
-- **Camera permission** is needed only for capturing inside Pluck. Gallery import does not request broad media-storage permission.
-- **Approximate location permission** is optional. It adds place hints, approximate addresses, and the private route sketch.
-- Enough free storage for captured photos, generated books, share cards, and saved stories. Core storage use grows with the number of photos and exports; Pluck does not impose a fixed core-storage threshold.
-- Internet is needed only for cloud story providers, provider connection tests, and the initial Local Gemma download. Existing journeys, story reading, local exports, and verified Local Gemma generation work offline.
-
-### Local Gemma (experimental)
-
-- A capable modern Android phone is recommended. Pluck is tuned and demonstrated on the **Samsung Galaxy S23**.
-- **4.5 GB of free private device storage** is enforced before installation. The verified Gemma 4 E2B download is approximately **2.58 GB**; remaining space allows safe installation and the LiteRT-LM runtime cache.
-- A stable internet connection is required once to download and verify the model. After verification, Local Gemma can generate stories without a connection.
-- Google estimates approximately **1.1 GB** of model memory for the Gemma 4 E2B mobile variant. This is a model-planning estimate, not a guarantee that every Android 7.0+ phone can run Pluck’s multimodal workload. [See Google’s Gemma 4 memory guidance.](https://ai.google.dev/gemma/docs/core)
-- GPU acceleration and LiteRT-LM support vary by device. Pluck does not claim a fixed RAM, chipset, or GPU minimum for Local Gemma; it remains optional and is not guaranteed on every supported Android device.
-- On a Galaxy S23, a typical four-place, 700–1,200-word story takes roughly **3–6 minutes**. More images, longer output, low battery, or a warm device can increase this time.
-- Start local generation with **30% battery or more**. For longer stories, connect power when possible and let a warm phone cool first.
-
-### Optional platform features
-
-- **Dynamic Material You colors:** Android 12+; Pluck falls back gracefully on older supported Android versions.
-- **Audiobook mode:** an installed Android text-to-speech engine with an offline voice for the selected language.
-- **Home-screen widgets:** a launcher that supports Android app widgets.
 
 ## Local Gemma
 
@@ -278,7 +85,7 @@ app/src/main/java/com/example/pluck/
 ├── ui/                 Compose screens, components, theme, share renderer
 ├── viewmodel/          Immutable StateFlow UI state
 ├── navigation/         Navigation Compose graph
-├── widget/             Capture, Today Journey, and Latest Story home-screen widgets
+├── widget/             Capture-next-place app widget
 └── di/                 Hilt bindings
 ```
 
@@ -318,10 +125,10 @@ The UI is built with Jetpack Compose and Material 3. It supports dynamic color, 
 
 ## Build and run
 
-### Development requirements
+### Requirements
 
-- Android Studio with Android SDK 36 installed
-- Android Studio’s bundled JBR 21
+- Android SDK 36
+- JDK 11
 - Android 7.0 / API 24 or newer device or emulator
 - A physical Android device for CameraX, location, Local Gemma, widget, and TTS verification
 
@@ -337,12 +144,6 @@ The APK is written to:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Install it from Android Studio or with ADB:
-
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
 ### First-run checklist
 
 1. Complete the minimal onboarding and optionally enter a preferred name.
@@ -352,7 +153,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ### Hackathon demo journey
 
-The Home screen offers **Explore the 20-photo demo journey** and **Create a story from demo photos**. Both actions open the same local, asset-backed journey with twenty original illustrated places, fictional timestamps, synthetic route coordinates, and fictional addresses. It deliberately creates no `Story` record: the second action simply opens mood selection directly, so the selected provider still performs the live generation without personal photos.
+The Home screen includes **Open demo journey · 20 original images**. It creates one local, asset-backed journey with twenty original illustrated places, fictional timestamps, synthetic route coordinates, and fictional addresses. It deliberately creates no `Story` record. Pick a provider and press Generate to demonstrate the actual live story pipeline without personal photos.
 
 ## Technology
 
@@ -365,10 +166,6 @@ The Home screen offers **Explore the 20-photo demo journey** and **Create a stor
 - Google AI Edge LiteRT-LM 0.14.0 for optional on-device inference
 - Android `TextToSpeech` restricted to installed offline voices
 
-## Validation still recommended before release
+## Author
 
-The project builds as a debug application. Before publishing, validate the complete flow on a real target device—especially the S23—for model download, verified offline generation, camera/location permissions, thermal behavior, export/open flows, sharing, offline TTS voices, and each cloud provider with a real user key. Add regression coverage for Room migrations and model download/verification failures before treating a release build as production-ready.
-
----
-
-**Project by Hariom Sharnam**
+Pluck is created by Hariom Sharnam.
